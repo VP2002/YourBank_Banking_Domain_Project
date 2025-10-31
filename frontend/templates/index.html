@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<!-- =========================
+     1) HERO / WELCOME (₹ only)
+     ========================= -->
+<section id="hero" class="hero container">
+  <div class="hero-badge"><span class="dot"></span> No LLC Required, No Credit Check.</div>
+
+  <div class="hero-grid">
+    <!-- Left copy -->
+    <div class="hero-left">
+      <h1>Welcome to YourBank<br/>Empowering Your <span class="accent">Financial</span><br/>Journey</h1>
+      <p>At YourBank, our mission is to provide comprehensive banking solutions that empower individuals and businesses to achieve their financial goals. We deliver personalized and innovative services that prioritize our customers’ needs.</p>
+
+      {# If EMPLOYEE is logged in, hide CTA. Otherwise show a generic CTA handled by JS. #}
+      {% if not (current_user.is_authenticated and has_role('EMPLOYEE')) %}
+        <a href="#" class="btn solid hero-cta open-account-cta">Open Account</a>
+      {% endif %}
+    </div>
+
+    <!-- Right: Transactions only (Indian names & ₹) -->
+    <aside class="hero-right">
+      <div class="income-pill">+ ₹50,000 <small>Monthly Income</small></div>
+
+      <div class="panel">
+        <h4>Your Transactions</h4>
+        <ul class="tx-list">
+          <li class="tx active clickable">
+            <span class="tx-icon">↺</span>
+            <div class="tx-meta"><small>Transaction</small><b>Aarav Mehta</b></div>
+            <span class="amt neg">-₹1,250.00</span>
+          </li>
+          <li class="tx dim clickable">
+            <span class="tx-icon">↺</span>
+            <div class="tx-meta"><small>Transaction</small><b>Priya Shah</b></div>
+            <span class="amt neg">-₹899.00</span>
+          </li>
+          <li class="tx dim clickable">
+            <span class="tx-icon">↺</span>
+            <div class="tx-meta"><small>Transaction</small><b>Rohan Iyer</b></div>
+            <span class="amt neg">-₹2,480.00</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="hero-arrows" aria-hidden="true"></div>
+    </aside>
+  </div>
+
+  <div class="supported">
+    <span>Supported Currency</span>
+    <span class="chip">₹</span><span class="chip">$</span><span class="chip">€</span><span class="chip">£</span>
+  </div>
+</section>
+
+<!-- =========================
+     2) OUR PRODUCTS (hover + button)
+     ========================= -->
+<section id="products" class="section container">
+  <div class="section-head">
+    <h2>Our <span class="accent">Products</span></h2>
+    <p>Discover a range of comprehensive and customizable banking products at YourBank, designed to suit your unique financial needs and aspirations</p>
+    <div class="segmented">
+      <button class="seg on">For Individuals</button>
+      <button class="seg">For Businesses</button>
+    </div>
+  </div>
+
+  <div class="grid three cards-row">
+    <article class="card product">
+      <div class="icon-badge">💼</div>
+      <h3>Checking Accounts</h3>
+      <p>Easy access to your funds with online/mobile banking, debit cards, and free ATM access.</p>
+      <a href="#" class="btn ghost sm show-on-hover">Learn More</a>
+    </article>
+    <article class="card product">
+      <div class="icon-badge">🫙</div>
+      <h3>Savings Accounts</h3>
+      <p>Build savings with competitive rates and flexible options to grow your wealth.</p>
+      <a href="#" class="btn ghost sm show-on-hover">Learn More</a>
+    </article>
+    <article class="card product">
+      <div class="icon-badge">💵</div>
+      <h3>Loans & Mortgages</h3>
+      <p>Flexible loans for your goals; our team guides you through every step.</p>
+      <a href="#" class="btn ghost sm show-on-hover">Learn More</a>
+    </article>
+  </div>
+</section>
+<!-- ===================================================== -->
+<!--               OUR SERVICES SECTION START              -->
+<!-- ===================================================== -->
+ 
+<section style="padding:0px 0; text-align:center;"> <!-- reduced space -->
+  <h2 style="font-size:32px; color:#fff; margin-bottom:10px;">Our Services</h2>
+  <p style="color:#aaa; font-size:16px; margin-bottom:30px;">
+    Explore the range of services we provide for your financial needs.
+  </p>
+ 
+  <div style="display:flex; justify-content:center; gap:24px; flex-wrap:wrap;">
+   
+    <!-- Loan Services Card -->
+    <div style="flex:1 1 320px; background:#ffffff; border:1px solid #ddd; border-radius:16px; padding:24px; text-align:left; color:#000; max-width:360px; transition:all 0.3s ease; box-shadow:0 2px 6px rgba(0,0,0,0.1);"
+         onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)';"
+         onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.1)';">
+      <h3 style="font-size:22px; margin-bottom:12px; color:#333;">Loan Services</h3>
+      <ul style="list-style:disc; padding-left:18px; margin-bottom:16px; color:#666; font-size:14px; line-height:1.6;">
+        <li>Personal Loan – 10% p.a. | Quick approvals</li>
+        <li>Home Loan – 8% p.a. | Flexible EMI options</li>
+        <li>Education Loan – 9% p.a. | Student-friendly process</li>
+        <li>Auto Loan – Competitive rates for vehicles</li>
+      </ul>
+      <a href="/services#loans" style="display:inline-block; padding:10px 18px; background:#333; color:#fff; font-weight:bold; border-radius:8px; text-decoration:none;">Learn More</a>
+    </div>
+ 
+    <!-- Credit & Debit Cards Card -->
+    <div style="flex:1 1 320px; background:#ffffff; border:1px solid #ddd; border-radius:16px; padding:24px; text-align:left; color:#000; max-width:360px; transition:all 0.3s ease; box-shadow:0 2px 6px rgba(0,0,0,0.1);"
+         onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)';"
+         onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.1)';">
+      <h3 style="font-size:22px; margin-bottom:12px; color:#333;">Credit & Debit Cards</h3>
+      <ul style="list-style:disc; padding-left:18px; margin-bottom:16px; color:#666; font-size:14px; line-height:1.6;">
+        <li>Credit Cards – Cashback & Rewards benefits</li>
+        <li>Debit Cards – Free ATM withdrawals</li>
+        <li>International usage enabled</li>
+        <li>Secure transactions with OTP</li>
+      </ul>
+      <a href="/services#cards" style="display:inline-block; padding:10px 18px; background:#333; color:#fff; font-weight:bold; border-radius:8px; text-decoration:none;">Learn More</a>
+    </div>
+ 
+    <!-- SIP Investment Card -->
+    <div style="flex:1 1 320px; background:#ffffff; border:1px solid #ddd; border-radius:16px; padding:24px; text-align:left; color:#000; max-width:360px; transition:all 0.3s ease; box-shadow:0 2px 6px rgba(0,0,0,0.1);"
+         onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)';"
+         onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.1)';">
+      <h3 style="font-size:22px; margin-bottom:12px; color:#333;">SIP Investments</h3>
+      <ul style="list-style:disc; padding-left:18px; margin-bottom:16px; color:#666; font-size:14px; line-height:1.6;">
+        <li>Equity Funds – 12% avg returns</li>
+        <li>Debt Funds – 8% avg returns</li>
+        <li>Hybrid Funds – Balanced growth</li>
+        <li>Monthly auto-investment facility</li>
+      </ul>
+      <a href="/services#sip" style="display:inline-block; padding:10px 18px; background:#333; color:#fff; font-weight:bold; border-radius:8px; text-decoration:none;">Learn More</a>
+    </div>
+ 
+  </div>
+</section>
+ 
+<!-- ===================================================== -->
+<!--               OUR SERVICES SECTION END                -->
+<!-- ===================================================== -->
+
+<!-- =========================
+     3) USE CASES
+     ========================= -->
+<section id="usecases" class="section container">
+  <h2>Use <span class="accent">Cases</span></h2>
+  <p class="sub">We cater to the diverse needs of individuals and businesses alike, offering a wide range of financial solutions.</p>
+
+  <div class="holder holder-usecases">
+    <div class="grid two use-grid">
+      <div class="use-grid-left">
+        <a href="#" class="card use-card inner clickable">🌱<b>Managing Personal Finances</b></a>
+        <a href="#" class="card use-card inner clickable">🏦<b>Homeownership</b></a>
+        <a href="#" class="card use-card inner clickable">💡<b>Saving for the Future</b></a>
+        <a href="#" class="card use-card inner clickable">📘<b>Education Funding</b></a>
+      </div>
+
+      <div class="use-right card">
+        <h3>For Individuals</h3>
+        <p>Our mortgage services pave the way to homeownership, and flexible personal loans support key life milestones. We prioritize retirement planning for a secure future.</p>
+        <div class="stats">
+          <div class="stat"><span>78%</span><small>Secure Retirement Planning</small></div>
+          <div class="stat"><span>63%</span><small>Manageable Debt Consolidation</small></div>
+          <div class="stat"><span>91%</span><small>Reducing financial burdens</small></div>
+        </div>
+        <a href="#" class="btn ghost pill-wide">Learn More</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================
+     4) FOR BUSINESS
+     ========================= -->
+<section id="business" class="section container">
+  <h2>For <span class="accent">Business</span></h2>
+
+  <div class="holder holder-business">
+    <p class="biz-desc">We empower growth with working capital solutions that optimize cash flow, and tailored financing options that fuel expansion.</p>
+
+    <div class="grid two biz-grid">
+      <div class="biz-left">
+        <ul class="bullet-list">
+          <li><span class="bicon">✓</span> 65% <b>Cash Flow Management</b></li>
+          <li><span class="bicon">✓</span> 70% <b>Drive Business Expansion</b></li>
+          <li><span class="bicon">✓</span> 45% <b>Streamline payroll processing</b></li>
+        </ul>
+        <a href="#" class="btn ghost pill-wide">Learn More</a>
+      </div>
+
+      <div class="biz-right card big-card">
+        <div class="grid two gap">
+          <a href="#" class="card use-card inner clickable">🏢<b>Startups & Entrepreneurs</b></a>
+          <a href="#" class="card use-card inner clickable">💸<b>Cash Flow Management</b></a>
+          <a href="#" class="card use-card inner clickable">📈<b>Business Expansion</b></a>
+          <a href="#" class="card use-card inner clickable">💳<b>Payment Solutions</b></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================
+     5) OUR FEATURES
+     ========================= -->
+<section id="features" class="section container">
+  <h2>Our <span class="accent">Features</span></h2>
+  <p class="sub">Seamless online banking, secure transactions, and personalized insights.</p>
+
+  <div class="holder holder-features">
+    <div class="grid two feat-grid">
+      <aside class="tabs card">
+        <button class="tab on clickable">Online Banking</button>
+        <button class="tab clickable">Financial Tools</button>
+        <button class="tab clickable">Customer Support</button>
+        <button class="tab clickable">Insights & Analytics</button>
+        <button class="tab clickable">Instant Payments</button>
+        <button class="tab clickable">Alerts & Notifications</button>
+      </aside>
+
+      <div class="feat-right grid two gap">
+        <a href="#" class="card feature-card inner">
+          <h4>24/7 Account Access <span class="arrow">↗</span></h4>
+          <p>Check balances, transfer funds, and pay bills anytime.</p>
+        </a>
+        <a href="#" class="card feature-card inner">
+          <h4>Mobile Banking App <span class="arrow">↗</span></h4>
+          <p>Manage accounts and payments on the go with our app.</p>
+        </a>
+        <a href="#" class="card feature-card inner">
+          <h4>Bill Pay & Transfers <span class="arrow">↗</span></h4>
+          <p>Set recurring payments or make one-time transfers.</p>
+        </a>
+        <a href="#" class="card feature-card inner">
+          <h4>Secure Transactions <span class="arrow">↗</span></h4>
+          <p>Encryption and multi-factor authentication protect you.</p>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================
+     6) FAQ
+     ========================= -->
+<section id="faq" class="section container">
+  <h2>Frequently <span class="accent">Asked Questions</span></h2>
+  <p class="sub">Still have any questions? Contact our Team via support@yourbank.com</p>
+
+  <div class="grid two gap faq-grid">
+    <article class="card faq-card square">
+      <h4>How do I open an account with YourBank?</h4>
+      <div class="rule"></div>
+      <p>Visit our website and click “Open an Account”. Follow the prompts, provide required information, and submit the application.</p>
+    </article>
+    <article class="card faq-card square">
+      <h4>What documents do I need to apply for a loan?</h4>
+      <div class="rule"></div>
+      <p>Typically ID proof, proof of income, and collateral details (if applicable). Our officers guide you through specifics.</p>
+    </article>
+    <article class="card faq-card square">
+      <h4>How can I access my accounts online?</h4>
+      <div class="rule"></div>
+      <p>Click “Login”. If you’re new to online banking, click “Enroll Now” and complete registration.</p>
+    </article>
+    <article class="card faq-card square">
+      <h4>Are my transactions and personal information secure?</h4>
+      <div class="rule"></div>
+      <p>We use strong encryption and multi-factor authentication, with frequent security updates.</p>
+    </article>
+  </div>
+
+  <div class="center mt">
+    {% if not (current_user.is_authenticated and has_role('EMPLOYEE')) %}
+      <a href="#" class="btn solid cta-btn open-account-cta"><span>Open Account</span></a>
+    {% endif %}
+  </div>
+</section>
+
+<!-- =========================
+     7) TESTIMONIALS
+     ========================= -->
+<section id="testimonials" class="section container">
+  <div class="section-head row">
+    <div>
+      <h2>Our <span class="accent">Testimonials</span></h2>
+      <p class="sub">See why clients trust us for a secure and prosperous financial journey.</p>
+    </div>
+    <div class="segmented">
+      <button class="seg on">For Individuals</button>
+      <button class="seg">For Businesses</button>
+    </div>
+  </div>
+
+  <div class="grid three cards-row testimonials-row">
+    <article class="tcard">
+      <div class="quote">“</div>
+      <p>YourBank has been my trusted financial partner for years. Personalized service and innovative solutions make finances a breeze.</p>
+      <b>Kiran</b>
+    </article>
+    <article class="tcard">
+      <div class="quote">“</div>
+      <p>I started my own business; YourBank helped set up accounts and secure financing. Their guidance is invaluable.</p>
+      <b>Saniya</b>
+    </article>
+    <article class="tcard">
+      <div class="quote">“</div>
+      <p>The mobile app keeps me on top of finances and transactions on the go—friendly and secure.</p>
+      <b>Anant</b>
+    </article>
+  </div>
+</section>
+
+<!-- =========================
+     8) CTA: START YOUR FINANCIAL JOURNEY
+     ========================= -->
+<section id="cta" class="container cta-wrap">
+  <div class="cta-card">
+    <div class="cta-copy">
+      <h2>Start your financial journey with <span class="accent">YourBank</span> today!</h2>
+      <p>Lorem ipsum dolor sit amet consectetur. Blandit odio semper risus pellentesque elit. Pellentesque eget ut imperdiet nulla penatibus. Nascetur viverra arcu sed amet cursus purus.</p>
+    </div>
+    {% if not (current_user.is_authenticated and has_role('EMPLOYEE')) %}
+      <a href="#" class="btn solid cta-btn open-account-cta"><span>Open Account</span></a>
+    {% endif %}
+  </div>
+</section>
+
+{# NOTE: The previous Open Account MODAL and its JS have been removed.
+   Opening an account now happens inline on /dashboard (section-open-account). #}
+
+
+ <!---------------------------------------------------
+  ----------------Scripts Code Start --------------------
+  ---------------------------------------------------->
+<!-- Page-local script to handle Open Account click -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  function handleOpenAccountClick(e){
+    e.preventDefault();
+    const isAuth = document.body.dataset.auth === "1";
+
+    if (!isAuth) {
+      // Not logged in: open the Login modal from base.html
+      const loginBtn = document.getElementById('openLogin');
+      if (loginBtn) {
+        loginBtn.click();
+      } else {
+        // Fallback: navigate to home and try again (shouldn't be needed)
+        console.warn('Login button not found; ensure base.html renders it for guests.');
+      }
+      return;
+    }
+
+    // Logged in (customer): go to dashboard open-account section
+    window.location.href = '/dashboard#open-account';
+  }
+
+  // Wire all Open Account CTAs on the page
+  document.querySelectorAll('.open-account-cta').forEach(el => {
+    el.addEventListener('click', handleOpenAccountClick);
+  });
+});
+</script>
+  <!---------------------------------------------------
+  ----------------Scripts Code END --------------------
+  ---------------------------------------------------->
+  
+{% endblock %}

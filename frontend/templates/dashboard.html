@@ -1,0 +1,3130 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  <div class="dash-grid">
+    <!-- LEFT SIDEBAR -->
+    <aside class="dash-sidebar">
+      <div class="profile-card">
+        <div class="avatar">
+          {{ (current_user.email[0]|upper) if current_user and current_user.email else 'U' }}
+        </div>
+        <div class="profile-meta">
+          <div class="name">
+            {{ (current_user.first_name or '') ~ (' ' ~ current_user.last_name if current_user.last_name else '') or (current_user.email or 'User') }}
+          </div>
+          <div class="tag">YourBank Customer</div>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-title">Overview</div>
+        <button type="button" class="nav-btn active" data-target="section-account">Account Details</button>
+        <button type="button" class="nav-btn" data-target="section-profile">Update Profile</button>
+        <button type="button" class="nav-btn" data-target="section-transactions">Recent Transactions</button>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-title">Services</div>
+        <button type="button" class="nav-btn" data-target="section-internet">Internet Banking</button>
+        <button type="button" class="nav-btn" data-target="section-transfer">Send Money</button>
+        <button type="button" class="nav-btn" data-target="section-loan">Loan Facility</button>
+        <button type="button" class="nav-btn" data-target="section-credit">Credit Card</button>
+        <button type="button" class="nav-btn" data-target="section-debit">Debit Card</button>
+        <button type="button" class="nav-btn" data-target="section-sip">SIP Investment</button>
+        <button type="button" class="nav-btn" data-target="section-sgb">Sovereign Gold Bonds</button>
+        <button type="button" class="nav-btn" data-target="section-open-account">Open Account</button>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN -->
+    <main class="dash-main">
+
+      <!-- SECTION: ACCOUNT DETAILS (default) -->
+      <section id="section-account" class="dash-section show">
+        <div id="noAccountCard" class="card tall">
+          <h3>No account found</h3>
+          <p>You don’t have an account with YourBank yet. Please apply for a new account opening or contact your branch.</p>
+          <button class="btn solid" id="goOpenAccount">Open Account</button>
+        </div>
+
+        <div id="accountSummary" class="card" style="display:none">
+          <div class="card-head">
+            <h3>Account Details</h3>
+            <span id="accStatus" class="status-pill">—</span>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <small class="muted">Account Holder</small>
+              <div id="holderName"><b>{{ (current_user.first_name or '') ~ (' ' ~ current_user.last_name if current_user.last_name else '') }}</b></div>
+            </div>
+            <div>
+              <small class="muted">Account Type</small>
+              <div id="accProduct"><b>—</b></div>
+            </div>
+            <div>
+              <small class="muted">Account No.</small>
+              <div id="accNo"><b>—</b></div>
+            </div>
+            <div>
+              <small class="muted">IFSC</small>
+              <div id="ifsc"><b>—</b></div>
+            </div>
+            <div>
+              <small class="muted">Branch Code</small>
+              <div id="branchCode"><b>—</b></div>
+            </div>
+            <div>
+              <small class="muted">Branch ID</small>
+              <div id="branchId"><b>—</b></div>
+            </div>
+            <div>
+              <small class="muted">Email</small>
+              <div><b>{{ current_user.email or '—' }}</b></div>
+            </div>
+            <div>
+              <small class="muted">Mobile</small>
+              <div id="custPhone"><b>—</b></div>
+            </div>
+            <div class="span2">
+              <small class="muted">Address</small>
+              <div id="custAddr"><b>—</b></div>
+            </div>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="balance">
+            <div>
+              <small class="muted">Available Balance</small>
+              <div id="balance" class="bal">₹ 0.00</div>
+            </div>
+          </div>
+
+          <div id="underReview" class="callout warn" style="display:none">
+            Your account request is <b>Under Review</b>. You’ll see full details once approved.
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: UPDATE PROFILE -->
+      <section id="section-profile" class="dash-section">
+        <div class="card">
+          <h3>Update Profile</h3>
+          <p class="auth-sub">Edit your <b>mobile</b> and <b>address</b> here. Email is read-only.</p>
+          <form id="profForm" class="auth-form">
+            <div class="row two">
+              <div class="field"><input type="text" id="profName" placeholder="Full Name" disabled /></div>
+              <div class="field"><input type="email" id="profEmail" placeholder="Email" disabled /></div>
+            </div>
+            <div class="row two">
+              <div class="field"><input type="tel" id="profPhone" placeholder="Mobile number" /></div>
+              <div class="field"><input type="text" id="profAddr" placeholder="Address" /></div>
+            </div>
+            <button type="submit" class="btn solid">Update</button>
+            <div class="form-msg" id="profMsg"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- SECTION: RECENT TRANSACTIONS -->
+      <section id="section-transactions" class="dash-section">
+        <div class="card" id="txCard">
+          <div class="card-head">
+            <h3>Recent Transactions</h3>
+            <button id="refreshTx" class="btn ghost" type="button">Refresh</button>
+          </div>
+
+          <!-- Single, canonical table markup -->
+          <div id="txScroll" class="tx-scroll">
+            <table class="tx">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>DR/CR</th>
+                  <th class="right">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="txBody"></tbody>
+            </table>
+          </div>
+
+          <div id="txEmpty" class="muted" style="display:none">No transactions yet.</div>
+          <div id="txLoading" class="muted small" style="display:none; padding-top:6px;">Loading…</div>
+        </div>
+      </section>
+
+      <!-- SECTION: INTERNET BANKING -->
+      <section id="section-internet" class="dash-section">
+        <div class="card" id="ibCard">
+          <h3>Internet Banking</h3>
+          <p class="auth-sub" id="ibSub">Activate, manage PIN, or deactivate internet banking.</p>
+
+          <!-- Activate -->
+          <form id="ibActivateForm" class="auth-form">
+            <div class="row two">
+              <div class="field"><input type="text" id="ibAccNo" placeholder="Account No." readonly /></div>
+              <div class="field"><input type="text" id="ibName" placeholder="Account Holder Name (optional)" /></div>
+            </div>
+            <div class="row two">
+              <div class="field"><input type="tel" id="ibMobile" placeholder="Mobile (optional)" /></div>
+              <div class="field"><input type="password" id="ibPin" placeholder="Set PIN (4 or 6 digits)" /></div>
+            </div>
+            <button type="submit" class="btn solid">Activate</button>
+            <div class="form-msg" id="ibMsg"></div>
+          </form>
+
+          <!-- Active view -->
+          <div id="ibActiveView" class="hidden" style="margin-top:12px">
+            <div class="inner-card">
+              <div id="ibStatusLine">Already activated — PIN: ••<b id="ibLast2">XX</b></div>
+            </div>
+
+            <details id="pinDetails" class="mb8">
+              <summary class="btn ghost">Change PIN</summary>
+              <form id="pinForm" class="auth-form mt10">
+                <div class="row two">
+                  <div class="field"><input type="password" id="pinOld" placeholder="Current PIN" required /></div>
+                  <div class="field"><input type="password" id="pinNew" placeholder="New PIN (4 or 6 digits)" required /></div>
+                </div>
+                <div class="row">
+                  <div class="field"><input type="password" id="pinConfirm" placeholder="Confirm New PIN" required /></div>
+                </div>
+                <button type="submit" class="btn solid">Save New PIN</button>
+                <div class="form-msg" id="pinMsg"></div>
+              </form>
+            </details>
+
+            <details id="deactDetails">
+              <summary class="btn ghost">Deactivate Internet Banking</summary>
+              <form id="ibDeactivateForm" class="auth-form mt10">
+                <div class="row">
+                  <div class="field"><input type="password" id="ibDeactPin" placeholder="Enter current PIN to confirm" required /></div>
+                </div>
+                <button type="submit" class="btn solid">Deactivate</button>
+                <div class="form-msg" id="ibDeactMsg"></div>
+              </form>
+            </details>
+          </div>
+          <div id="ibBadge" class="muted small mt8">Status: Checking…</div>
+        </div>
+      </section>
+
+      <!-- SECTION: SEND MONEY (locked until IB active) -->
+      <section id="section-transfer" class="dash-section">
+        <div class="card" id="payCard">
+          <h3>Send Money</h3>
+          <div id="payLockedMsg" class="callout warn" style="display:none; margin-bottom:10px;">
+            Dear customer, please activate your Internet Banking to use Send Money.
+          </div>
+          <p class="auth-sub">Enter destination and your PIN to transfer.</p>
+          <form id="payForm" class="auth-form">
+            <div class="row two">
+              <div class="field"><input type="text" id="payFrom" placeholder="From Account No." readonly /></div>
+              <div class="field"><input type="text" id="payTo" placeholder="To Account No." required /></div>
+            </div>
+            <div class="row two">
+              <div class="field"><input type="number" id="payAmt" placeholder="Amount (₹)" step="0.01" min="1" required /></div>
+              <div class="field"><input type="password" id="payPin" placeholder="PIN (4 or 6 digits)" required /></div>
+            </div>
+            <button type="submit" id="paySubmit" class="btn solid">Send</button>
+            <div class="form-msg" id="payMsg"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- SECTION: LOAN FACILITY (FULL) -->
+      <section id="section-loan" class="dash-section">
+        <div class="card" id="loanCard">
+          <div class="card-head">
+            <h3>Loan Facility</h3>
+            <div>
+              <button type="button" class="btn ghost" id="loanRefreshBtn">Refresh</button>
+              <button type="button" class="btn solid" id="loanApplyBtn">Apply New Loan</button>
+            </div>
+          </div>
+
+          <!-- Mini dashboard: previous applications -->
+          <div class="inner-card">
+            <div class="grid2">
+              <div>
+                <small class="muted">Applications</small>
+                <div id="loanCount" class="bal small">0</div>
+              </div>
+              <div>
+                <small class="muted"> </small>
+                <div id="loanLastStatus" class="status-pill">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="loanListWrap" class="tx-scroll">
+            <table class="tx loan">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Product</th>
+                  <th>Amount</th>
+                  <th>Purpose</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th class="right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="loanBody"></tbody>
+            </table>
+          </div>
+          <div id="loanEmpty" class="muted" style="display:none">No loan applications yet.</div>
+          <div id="loanMsg" class="form-msg"></div>
+        </div>
+
+<!-- Apply New Loan Modal -->
+<dialog id="loanDialog" class="loan-dialog">
+  <form id="loanForm" method="dialog" enctype="multipart/form-data">
+    <div class="dialog-head">
+      <h3>Apply for a Loan</h3>
+      <button type="button" class="icon-btn" id="loanClose">&times;</button>
+    </div>
+
+    <!-- Auto-filled customer info -->
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Customer Name</label>
+        <input type="text" id="loanCustName" name="customer_name" readonly />
+      </div>
+      <div class="field">
+        <label class="lbl">Account No.</label>
+        <input type="text" id="loanAccNo" name="account_no" readonly />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field select-wrap">
+        <label class="lbl">Loan Product</label>
+        <select name="product" id="loanProduct" class="sel" required>
+          <option value="" disabled selected>Select</option>
+          <option>PERSONAL</option>
+          <option>EDUCATION</option>
+          <option>HOME</option>
+          <option>AUTO</option>
+          <option>BUSINESS</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl">Amount (₹)</label>
+        <input type="number" name="amount" id="loanAmount" min="1000" step="0.01" required />
+      </div>
+    </div>
+
+    <!-- ROI/Info for selected product -->
+    <div class="inner-card" id="loanRoiInfo" style="display:none;">
+      <div id="loanRoiText" class="small"></div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="lbl">Purpose / Notes</label>
+        <input type="text" name="purpose" id="loanPurpose" placeholder="e.g., Medical expenses" />
+      </div>
+    </div>
+
+    <!-- New fields: PAN, Aadhaar, Occupation -->
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">PAN Number</label>
+        <input type="text" name="pan_no" id="loanPanNo" maxlength="10" required />
+      </div>
+      <div class="field">
+        <label class="lbl">Aadhaar Number</label>
+        <input type="text" name="aadhaar_no" id="loanAadhaarNo" maxlength="12" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field select-wrap">
+        <label class="lbl">Occupation</label>
+        <select name="occupation" id="loanOccupation" class="sel" required>
+          <option value="" disabled selected>Select</option>
+          <option>Salaried</option>
+          <option>Self-Employed</option>
+          <option>Student</option>
+          <option>Retired</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Optional documents -->
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Income Proof (optional)</label>
+        <input type="file" name="income_proof" accept=".jpg,.jpeg,.png,.webp,.pdf" />
+      </div>
+      <div class="field">
+        <label class="lbl">ID Proof (optional)</label>
+        <input type="file" name="id_proof" accept=".jpg,.jpeg,.png,.webp,.pdf" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label class="lbl">Address Proof (optional)</label>
+        <input type="file" name="address_proof" accept=".jpg,.jpeg,.png,.webp,.pdf" />
+      </div>
+    </div>
+
+    <div class="row">
+      <label class="small">
+        <input type="checkbox" id="loanAgree" required />
+        I confirm the details are true and I authorize verification.
+      </label>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="submit" class="btn solid">Submit Application</button>
+      <div id="loanFormMsg" class="form-msg"></div>
+    </div>
+  </form>
+</dialog>
+</section>
+
+<!---------------------------------------------------
+--------------- CREDIT CARD FACILITY START HERE -----
+----------------------------------------------------->
+
+<!-- ================== CREDIT CARD HTML START HERE ================== -->
+<section id="section-credit" class="dash-section">
+  <div class="card" id="ccCard" style="position:relative; overflow:hidden;">
+    <div class="card-head">
+      <h3>Credit Card</h3>
+    </div>
+
+    <!-- Upper: compact message card + one transparent image -->
+    <div class="cc-hero">
+      <!-- Left: compact credit-card style message -->
+      <div class="cc-msg-card">
+        <div class="cc-chip"></div>
+        <div class="cc-msg">
+          <p class="lead">🙋‍♂️ <b>No active credit card found.</b></p>
+          <p>✨ Apply now to enjoy rewards, quick payments, and secure online transactions.</p>
+          <p>🛡️ Zero-liability on lost cards once reported.</p>
+        </div>
+      </div>
+
+      <!-- Right: single transparent image (no background wrapper) -->
+      <div class="cc-art">
+        <img src="/static/images/credit_card.jpg" alt="YourBank Credit Card" class="cc-img" loading="lazy" />
+      </div>
+    </div>
+
+    <!-- Lower: applications -->
+    <div class="card cc-list">
+      <div class="card-head">
+        <h3>My Applications</h3>
+        <div>
+          <button type="button" class="btn ghost" id="ccRefreshBtn">Refresh</button>
+          <button type="button" class="btn solid" id="ccApplyBtn">Apply New Card</button>
+        </div>
+      </div>
+
+      <div id="ccListWrap" class="tx-scroll">
+        <table class="tx loan">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Card Type</th>
+              <th>Preferred Limit</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th class="right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="ccBody"></tbody>
+        </table>
+      </div>
+      <div id="ccEmpty" class="muted" style="display:none">No credit card applications yet.</div>
+      <div id="ccMsg" class="form-msg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Apply New Credit Card Modal (same as before) -->
+<dialog id="ccDialog" class="loan-dialog">
+  <form id="ccForm" method="dialog" enctype="multipart/form-data">
+    <div class="dialog-head">
+      <h3>Apply for a Credit Card</h3>
+      <button type="button" class="icon-btn" id="ccClose">&times;</button>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Card Holder Name</label>
+        <input type="text" id="ccHolder" name="holder_name" readonly />
+      </div>
+      <div class="field">
+        <label class="lbl">Account No.</label>
+        <input type="text" id="ccAccNo" name="account_no" readonly />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field select-wrap">
+        <label class="lbl">Card Type</label>
+        <select name="card_type" id="ccType" class="sel" required>
+          <option value="" disabled selected>Select</option>
+          <option>Classic</option><option>Gold</option><option>Platinum</option><option>Business</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl">Delivery Address</label>
+        <input type="text" name="delivery_address" id="ccAddress" required />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Monthly Income (₹)</label>
+        <input type="number" name="monthly_income" id="ccIncome" min="0" step="0.01" required />
+      </div>
+      <div class="field select-wrap">
+        <label class="lbl">Employment Type</label>
+        <select name="employment_type" id="ccEmployment" class="sel" required>
+          <option value="" disabled selected>Select</option>
+          <option>Salaried</option><option>Self-Employed</option><option>Student</option><option>Retired</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Preferred Credit Limit (₹)</label>
+        <input type="number" name="preferred_limit" id="ccPrefLimit" min="10000" step="1000" required />
+      </div>
+      <div class="field">
+        <label class="lbl">Pincode</label>
+        <input type="text" name="pincode" id="ccPincode" maxlength="6" inputmode="numeric" required />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Upload PAN</label>
+        <input type="file" name="pan_file" accept=".jpg,.jpeg,.png,.pdf" required />
+      </div>
+      <div class="field">
+        <label class="lbl">Upload Aadhaar</label>
+        <input type="file" name="aadhaar_file" accept=".jpg,.jpeg,.png,.pdf" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <label class="small">
+        <input type="checkbox" id="ccAgree" required />
+        I confirm the details are true and authorize verification.
+      </label>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="submit" class="btn solid">Submit Application</button>
+      <div id="ccFormMsg" class="form-msg"></div>
+    </div>
+  </form>
+</dialog>
+<!-- ================== CREDIT CARD HTML END HERE ================== -->
+
+
+<!-- ================== CREDIT CARD CSS START HERE ================== -->
+<style>
+  /* Balanced two-column hero */
+  .cc-hero{
+    display:grid;
+    grid-template-columns: minmax(400px, 1fr) 340px; /* slightly smaller */
+    gap:16px;
+    align-items:center;
+    min-height: 220px;
+  }
+
+  /* Compact, subtle “card” */
+  .cc-msg-card{
+    position:relative;
+    border:1px solid rgba(160,255,80,.22);
+    background: linear-gradient(135deg, rgba(160,255,80,.08), rgba(255,255,255,.03));
+    border-radius:12px;
+    padding:16px 18px;
+    min-height: 120px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .cc-chip{
+    position:absolute; width:32px; height:22px; border-radius:6px;
+    left:16px; top:12px;
+    background: linear-gradient(180deg,#f8d063,#caa246);
+    opacity:.28;
+  }
+  .cc-msg .lead{ font-size:15.5px; margin:0 0 6px; }
+  .cc-msg p{ margin:4px 0; font-size:14px; line-height:1.55; }
+
+  /* Right image – a touch smaller, no wrapper chrome */
+  .cc-art{
+    display:flex; align-items:center; justify-content:center;
+    background:transparent !important; border:0 !important; box-shadow:none !important;
+    min-height:220px;
+  }
+  .cc-img{
+    height: 100%;
+    max-height: 220px;   /* slightly smaller */
+    width: auto;
+    object-fit: contain;
+    background:transparent; border:0; box-shadow:none; border-radius:0;
+    transform-origin: 60% 60%;
+    transition: transform .16s ease;
+  }
+  .cc-img:hover{ transform: translateY(-1px) scale(1.01); }
+
+  .cc-list{ margin-top:12px; }
+
+  @media (max-width: 1000px){
+    .cc-hero{ grid-template-columns: 1fr; }
+    .cc-art{ min-height: 200px; }
+    .cc-img{ max-height: 200px; }
+  }
+</style>
+<!-- ================== CREDIT CARD CSS END HERE ================== -->
+
+<!-- ================== CREDIT CARD Js Start HERE ================== -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const ccApplyBtn = document.getElementById('ccApplyBtn');
+    const ccDialog   = document.getElementById('ccDialog');
+    const ccClose    = document.getElementById('ccClose');
+    const ccForm     = document.getElementById('ccForm');
+    const ccFormMsg  = document.getElementById('ccFormMsg');
+    const ccBody     = document.getElementById('ccBody');
+    const ccEmpty    = document.getElementById('ccEmpty');
+    const ccMsg      = document.getElementById('ccMsg');
+    const ccRefreshBtn = document.getElementById('ccRefreshBtn');
+
+    // --- local helper: GET + parse JSON ---
+    async function jgetLocal(url){
+      const res = await fetch(url);
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const j = await res.json();
+        if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+        return j;
+      }
+      throw new Error(await res.text() || 'Unexpected response');
+    }
+
+    function statusPillLocal(status){
+      const span = document.createElement('span');
+      span.className = 'status-pill ' + ((status==='APPROVED')?'ok':(status==='PENDING'?'':'warn'));
+      span.textContent = status || 'PENDING';
+      return span;
+    }
+
+    function renderCcRow(item){
+      const tr = document.createElement('tr');
+      const created = item.created_at ? (new Date(item.created_at)).toLocaleDateString() : '-';
+      const pref = item.preferred_limit ? ('₹ ' + Number(item.preferred_limit).toFixed(2)) : '-';
+      tr.innerHTML = `
+        <td>${item.id}</td>
+        <td>${item.card_type || '-'}</td>
+        <td>${pref}</td>
+        <td></td>
+        <td>${created}</td>
+        <td class="right"></td>
+      `;
+      tr.children[3].appendChild(statusPillLocal(item.status || 'PENDING'));
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn ghost';
+      removeBtn.textContent = 'Remove';
+      removeBtn.addEventListener('click', ()=>{
+        tr.remove();
+        if (ccMsg) { ccMsg.classList.remove('error'); ccMsg.textContent = 'Removed from view (does not delete from bank records).'; }
+        if (ccBody && ccBody.children.length === 0 && ccEmpty) ccEmpty.style.display = '';
+      });
+      tr.children[5].appendChild(removeBtn);
+      return tr;
+    }
+
+    async function loadCreditCards(){
+      if (!ccBody) return;
+      ccBody.innerHTML = '';
+      if (ccEmpty) ccEmpty.style.display = 'none';
+      try {
+        const res = await jgetLocal('/api/credit_cards/my');
+        const items = res.items || [];
+        if (items.length === 0) {
+          if (ccEmpty) ccEmpty.style.display = '';
+          return;
+        }
+        for (const it of items) ccBody.appendChild(renderCcRow(it));
+      } catch (err) {
+        if (ccMsg) {
+          ccMsg.classList.add('error');
+          ccMsg.textContent = err.message || 'Failed to load credit card applications';
+        }
+        if (ccEmpty) ccEmpty.style.display = '';
+      }
+    }
+
+    if (ccRefreshBtn) ccRefreshBtn.addEventListener('click', ()=> loadCreditCards());
+
+    if (ccApplyBtn && ccDialog) {
+      ccApplyBtn.addEventListener('click', () => {
+        ccForm.reset();
+        ccFormMsg.textContent = '';
+        const holder = document.getElementById('holderName');
+        const accNo  = document.getElementById('accNo');
+        if (holder) document.getElementById('ccHolder').value = holder.innerText.trim();
+        if (accNo)  document.getElementById('ccAccNo').value  = accNo.innerText.trim();
+        if (!ccDialog.open) ccDialog.showModal();
+      });
+    }
+
+    if (ccClose && ccDialog) ccClose.addEventListener('click', () => ccDialog.close());
+
+    if (ccForm){
+      ccForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ccFormMsg.textContent = '';
+        ccFormMsg.classList.remove('error');
+        try {
+          const fd = new FormData(ccForm);
+          const res = await fetch('/api/ops/credit_cards', { method: 'POST', body: fd });
+          const ct  = res.headers.get('content-type') || '';
+          let j;
+          if (ct.includes('application/json')) j = await res.json();
+          else { throw new Error(await res.text() || 'Unexpected response'); }
+          if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+
+          ccFormMsg.textContent = '✅ Credit Card application submitted';
+          setTimeout(() => ccDialog.close(), 300);
+
+          await loadCreditCards();
+        } catch (err) {
+          ccFormMsg.classList.add('error');
+          ccFormMsg.textContent = err.message || 'Submission failed';
+        }
+      });
+    }
+
+    // expose to window for init
+    window.__loadCreditCards = loadCreditCards;
+  });
+</script>
+<!-- ================== CREDIT CARD Js END HERE ================== -->
+
+
+
+
+<!---------------------------------------------------
+--------------- CREDIT CARD FACILITY ENDS HERE ------
+----------------------------------------------------->
+
+<!---------------------------------------------------
+--------------- DEBIT CARD FACILITY START HERE -----
+----------------------------------------------------->
+
+<!-- ================== DEBIT CARD HTML START HERE ================== -->
+<section id="section-debit" class="dash-section">
+  <div class="card" id="dcCard" style="position:relative; overflow:hidden;">
+    <div class="card-head">
+      <h3>Debit Card</h3>
+    </div>
+
+    <!-- Upper: compact message card + one transparent image -->
+    <div class="dc-hero">
+      <!-- Left: compact debit-card style message -->
+      <div class="dc-msg-card">
+        <div class="dc-chip"></div>
+        <div class="dc-msg">
+          <p class="lead">🙋‍♂️ <b>No active debit card found.</b></p>
+          <p>✨ Apply now to get your debit card for secure ATM & POS transactions.</p>
+          <p>🛡️ Report lost cards immediately to block transactions.</p>
+        </div>
+      </div>
+
+      <!-- Right: single transparent image (no background wrapper) -->
+      <div class="dc-art">
+        <img src="/static/images/debit_card.jpg" alt="YourBank Debit Card" class="dc-img" loading="lazy" />
+      </div>
+    </div>
+
+    <!-- Lower: applications -->
+    <div class="card dc-list">
+      <div class="card-head">
+        <h3>My Applications</h3>
+        <div>
+          <button type="button" class="btn ghost" id="dcRefreshBtn">Refresh</button>
+          <button type="button" class="btn solid" id="dcApplyBtn">Apply New Card</button>
+        </div>
+      </div>
+
+      <div id="dcListWrap" class="tx-scroll">
+        <table class="tx loan">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Card Type</th>
+              <th>Preferred Limit</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th class="right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="dcBody"></tbody>
+        </table>
+      </div>
+      <div id="dcEmpty" class="muted" style="display:none">No debit card applications yet.</div>
+      <div id="dcMsg" class="form-msg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Apply New Debit Card Modal (mirrors credit card flow) -->
+<dialog id="dcDialog" class="loan-dialog">
+  <form id="dcForm" method="dialog" enctype="multipart/form-data">
+    <div class="dialog-head">
+      <h3>Apply for a Debit Card</h3>
+      <button type="button" class="icon-btn" id="dcClose">&times;</button>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Card Holder Name</label>
+        <input type="text" id="dcHolder" name="holder_name" readonly />
+      </div>
+      <div class="field">
+        <label class="lbl">Account No.</label>
+        <input type="text" id="dcAccNo" name="account_no" readonly />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field select-wrap">
+        <label class="lbl">Card Type</label>
+        <select name="card_type" id="dcType" class="sel" required>
+          <option value="" disabled selected>Select</option>
+          <option>Standard</option><option>Premier</option><option>Platinum</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl">Delivery Address</label>
+        <input type="text" name="delivery_address" id="dcAddress" required />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Monthly Income (₹)</label>
+        <input type="number" name="monthly_income" id="dcIncome" min="0" step="0.01" required />
+      </div>
+      <div class="field select-wrap">
+        <label class="lbl">Employment Type</label>
+        <select name="employment_type" id="dcEmployment" class="sel" required>
+          <option value="" disabled selected>Select</option>
+          <option>Salaried</option><option>Self-Employed</option><option>Student</option><option>Retired</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Pincode</label>
+        <input type="text" name="pincode" id="dcPincode" maxlength="6" inputmode="numeric" required />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Upload PAN</label>
+        <input type="file" name="pan_file" accept=".jpg,.jpeg,.png,.pdf" required />
+      </div>
+      <div class="field">
+        <label class="lbl">Upload Aadhaar</label>
+        <input type="file" name="aadhaar_file" accept=".jpg,.jpeg,.png,.pdf" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <label class="small">
+        <input type="checkbox" id="dcAgree" required />
+        I confirm the details are true and authorize verification.
+      </label>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="submit" class="btn solid">Submit Application</button>
+      <div id="dcFormMsg" class="form-msg"></div>
+    </div>
+  </form>
+</dialog>
+<!-- ================== DEBIT CARD HTML END HERE ================== -->
+
+
+<!-- ================== DEBIT CARD CSS START HERE ================== -->
+<style>
+  /* Balanced two-column hero (mirrors credit style) */
+  .dc-hero{
+    display:grid;
+    grid-template-columns: minmax(400px, 1fr) 340px;
+    gap:16px;
+    align-items:center;
+    min-height: 220px;
+  }
+
+  /* Compact, subtle “card” */
+  .dc-msg-card{
+    position:relative;
+    border:1px solid rgba(160,255,80,.22);
+    background: linear-gradient(135deg, rgba(160,255,80,.08), rgba(255,255,255,.03));
+    border-radius:12px;
+    padding:16px 18px;
+    min-height: 120px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .dc-chip{
+    position:absolute; width:32px; height:22px; border-radius:6px;
+    left:16px; top:12px;
+    background: linear-gradient(180deg,#f8d063,#caa246);
+    opacity:.28;
+  }
+  .dc-msg .lead{ font-size:15.5px; margin:0 0 6px; }
+  .dc-msg p{ margin:4px 0; font-size:14px; line-height:1.55; }
+
+  /* Right image – a touch smaller, no wrapper chrome */
+  .dc-art{
+    display:flex; align-items:center; justify-content:center;
+    background:transparent !important; border:0 !important; box-shadow:none !important;
+    min-height:220px;
+  }
+  .dc-img{
+    height: 100%;
+    max-height: 220px;
+    width: auto;
+    object-fit: contain;
+    background:transparent; border:0; box-shadow:none; border-radius:0;
+    transform-origin: 60% 60%;
+    transition: transform .16s ease;
+  }
+  .dc-img:hover{ transform: translateY(-1px) scale(1.01); }
+
+  .dc-list{ margin-top:12px; }
+
+  @media (max-width: 1000px){
+    .dc-hero{ grid-template-columns: 1fr; }
+    .dc-art{ min-height: 200px; }
+    .dc-img{ max-height: 200px; }
+  }
+</style>
+<!-- ================== DEBIT CARD CSS END HERE ================== -->
+
+
+<!-- ================== DEBIT CARD Js Start HERE ================== -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dcApplyBtn = document.getElementById('dcApplyBtn');
+    const dcDialog   = document.getElementById('dcDialog');
+    const dcClose    = document.getElementById('dcClose');
+    const dcForm     = document.getElementById('dcForm');
+    const dcFormMsg  = document.getElementById('dcFormMsg');
+    const dcBody     = document.getElementById('dcBody');
+    const dcEmpty    = document.getElementById('dcEmpty');
+    const dcMsg      = document.getElementById('dcMsg');
+    const dcRefreshBtn = document.getElementById('dcRefreshBtn');
+
+    // --- local helper: GET + parse JSON ---
+    async function jgetLocal(url){
+      const res = await fetch(url);
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const j = await res.json();
+        if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+        return j;
+      }
+      throw new Error(await res.text() || 'Unexpected response');
+    }
+
+    function statusPillLocal(status){
+      const span = document.createElement('span');
+      span.className = 'status-pill ' + ((status==='APPROVED')?'ok':(status==='PENDING'?'':'warn'));
+      span.textContent = status || 'PENDING';
+      return span;
+    }
+
+    function renderDcRow(item){
+      const tr = document.createElement('tr');
+      const created = item.created_at ? (new Date(item.created_at)).toLocaleDateString() : '-';
+      const pref = item.preferred_limit ? ('₹ ' + Number(item.preferred_limit).toFixed(2)) : '-';
+      tr.innerHTML = `
+        <td>${item.id}</td>
+        <td>${item.card_type || '-'}</td>
+        <td>${pref}</td>
+        <td></td>
+        <td>${created}</td>
+        <td class="right"></td>
+      `;
+      tr.children[3].appendChild(statusPillLocal(item.status || 'PENDING'));
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn ghost';
+      removeBtn.textContent = 'Remove';
+      removeBtn.addEventListener('click', ()=>{
+        tr.remove();
+        if (dcMsg) { dcMsg.classList.remove('error'); dcMsg.textContent = 'Removed from view (does not delete from bank records).'; }
+        if (dcBody && dcBody.children.length === 0 && dcEmpty) dcEmpty.style.display = '';
+      });
+      tr.children[5].appendChild(removeBtn);
+      return tr;
+    }
+
+    async function loadDebitCards(){
+      if (!dcBody) return;
+      dcBody.innerHTML = '';
+      if (dcEmpty) dcEmpty.style.display = 'none';
+      try {
+        const res = await jgetLocal('/api/debit_cards/my');
+        const items = res.items || [];
+        if (items.length === 0) {
+          if (dcEmpty) dcEmpty.style.display = '';
+          return;
+        }
+        for (const it of items) dcBody.appendChild(renderDcRow(it));
+      } catch (err) {
+        if (dcMsg) {
+          dcMsg.classList.add('error');
+          dcMsg.textContent = err.message || 'Failed to load debit card applications';
+        }
+        if (dcEmpty) dcEmpty.style.display = '';
+      }
+    }
+
+    if (dcRefreshBtn) dcRefreshBtn.addEventListener('click', ()=> loadDebitCards());
+
+    if (dcApplyBtn && dcDialog) {
+      dcApplyBtn.addEventListener('click', () => {
+        dcForm.reset();
+        dcFormMsg.textContent = '';
+        const holder = document.getElementById('holderName');
+        const accNo  = document.getElementById('accNo');
+        if (holder) document.getElementById('dcHolder').value = holder.innerText.trim();
+        if (accNo)  document.getElementById('dcAccNo').value  = accNo.innerText.trim();
+        if (!dcDialog.open) dcDialog.showModal();
+      });
+    }
+
+    if (dcClose && dcDialog) dcClose.addEventListener('click', () => dcDialog.close());
+
+    if (dcForm){
+      dcForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        dcFormMsg.textContent = '';
+        dcFormMsg.classList.remove('error');
+        try {
+          const fd = new FormData(dcForm);
+          const res = await fetch('/api/debit_cards/apply', { method: 'POST', body: fd });
+          const ct  = res.headers.get('content-type') || '';
+          let j;
+          if (ct.includes('application/json')) j = await res.json();
+          else { throw new Error(await res.text() || 'Unexpected response'); }
+          if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+
+          dcFormMsg.textContent = '✅ Debit Card application submitted';
+          setTimeout(() => dcDialog.close(), 300);
+
+          await loadDebitCards();
+        } catch (err) {
+          dcFormMsg.classList.add('error');
+          dcFormMsg.textContent = err.message || 'Submission failed';
+        }
+      });
+    }
+
+    // expose to window for init
+    window.__loadDebitCards = loadDebitCards;
+  });
+</script>
+<!-- ================== DEBIT CARD Js END HERE ================== -->
+
+
+<!---------------------------------------------------
+--------------- DEBIT CARD FACILITY ENDS HERE -------
+----------------------------------------------------->
+
+<!---------------------------------------------------
+--------------- SIP FACILITY START HERE -----
+----------------------------------------------------->
+
+<!-- ================== SIP HTML START HERE ================== -->
+<section id="section-sip" class="dash-section">
+  <div class="card" id="sipCard" style="position:relative; overflow:hidden;">
+    <div class="card-head">
+      <h3>SIP Investment</h3>
+    </div>
+
+    <!-- Upper: compact message card + one transparent image -->
+    <div class="sip-hero">
+      <!-- Left: compact sip style message -->
+      <div class="sip-msg-card">
+        <div class="sip-chip"></div>
+        <div class="sip-msg">
+          <p class="lead">📈 <b>Start your SIP journey today.</b></p>
+          <p>✨ Invest systematically in mutual funds with as low as ₹500 per month.</p>
+          <p>🛡️ Build wealth over time with disciplined investing.</p>
+        </div>
+      </div>
+
+      <!-- Right: single transparent image (no background wrapper) -->
+      <div class="sip-art">
+        <img src="/static/images/svc-sip.jpg" alt="YourBank SIP Investment" class="sip-img" loading="lazy" />
+      </div>
+    </div>
+
+    <!-- Lower: applications -->
+    <div class="card sip-list">
+      <div class="card-head">
+        <h3>My SIP Investments</h3>
+        <div>
+          <button type="button" class="btn ghost" id="sipRefreshBtn">Refresh</button>
+          <button type="button" class="btn solid" id="sipApplyBtn">Start New SIP</button>
+        </div>
+      </div>
+
+      <div id="sipListWrap" class="tx-scroll">
+        <table class="tx loan">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Fund Name</th>
+              <th>Type</th>
+              <th>Monthly Amount</th>
+              <th>Status</th>
+              <th>Current Value</th>
+              <th class="right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="sipBody"></tbody>
+        </table>
+      </div>
+      <div id="sipEmpty" class="muted" style="display:none">No SIP investments yet.</div>
+      <div id="sipMsg" class="form-msg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Apply New SIP Modal -->
+<dialog id="sipDialog" class="loan-dialog">
+  <form id="sipForm" method="dialog" enctype="multipart/form-data">
+    <div class="dialog-head">
+      <h3>Start SIP Investment</h3>
+      <button type="button" class="icon-btn" id="sipClose">&times;</button>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Investor Name</label>
+        <input type="text" id="sipHolder" name="holder_name" readonly />
+      </div>
+      <div class="field">
+        <label class="lbl">Account No.</label>
+        <input type="text" id="sipAccNo" name="account_no" readonly />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field select-wrap">
+        <label class="lbl">Select Fund</label>
+        <select name="fund_name" id="sipFundName" class="sel" required>
+          <option value="" disabled selected>Choose a fund</option>
+          <optgroup label="Equity Funds (Higher Risk, Higher Returns)">
+            <option value="YourBank Large Cap Equity Fund">YourBank Large Cap Equity Fund - Invests in top 100 companies</option>
+            <option value="YourBank Mid Cap Growth Fund">YourBank Mid Cap Growth Fund - Focus on mid-size companies</option>
+            <option value="YourBank Small Cap Fund">YourBank Small Cap Fund - High growth potential, higher risk</option>
+            <option value="YourBank Technology Fund">YourBank Technology Fund - IT and tech sector focus</option>
+          </optgroup>
+          <optgroup label="Debt Funds (Lower Risk, Stable Returns)">
+            <option value="YourBank Government Securities Fund">YourBank Government Securities Fund - Ultra-safe government bonds</option>
+            <option value="YourBank Corporate Bond Fund">YourBank Corporate Bond Fund - High-quality corporate bonds</option>
+            <option value="YourBank Liquid Fund">YourBank Liquid Fund - Short-term investments, high liquidity</option>
+            <option value="YourBank Banking & PSU Fund">YourBank Banking & PSU Fund - Banking and public sector bonds</option>
+          </optgroup>
+          <optgroup label="Hybrid Funds (Balanced Risk & Returns)">
+            <option value="YourBank Balanced Advantage Fund">YourBank Balanced Advantage Fund - Dynamic equity-debt allocation</option>
+            <option value="YourBank Conservative Hybrid Fund">YourBank Conservative Hybrid Fund - 20-35% equity, rest debt</option>
+            <option value="YourBank Aggressive Hybrid Fund">YourBank Aggressive Hybrid Fund - 65-80% equity, rest debt</option>
+            <option value="YourBank Multi-Asset Fund">YourBank Multi-Asset Fund - Equity, debt, gold, and REITs</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field select-wrap">
+        <label class="lbl">Fund Type</label>
+        <select name="fund_type" id="sipFundType" class="sel" required>
+          <option value="" disabled selected>Auto-selected based on fund</option>
+          <option>EQUITY</option><option>DEBT</option><option>HYBRID</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Monthly Investment (₹)</label>
+        <input type="number" name="monthly_amount" id="sipAmount" min="500" step="100" required />
+      </div>
+      <div class="field">
+        <label class="lbl">Investment Tenure (Months)</label>
+        <input type="number" name="tenure_months" id="sipTenure" min="6" max="360" value="12" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="lbl">Start Date</label>
+        <input type="date" name="start_date" id="sipStartDate" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="lbl">KYC Document (optional)</label>
+        <input type="file" name="kyc_file" accept=".jpg,.jpeg,.png,.pdf" />
+      </div>
+    </div>
+
+    <!-- SIP Info Panel -->
+    <div class="inner-card" id="sipInfoPanel" style="display:none;">
+      <div id="sipInfoText" class="small"></div>
+    </div>
+
+    <div class="row">
+      <label class="small">
+        <input type="checkbox" id="sipAgree" required />
+        I understand SIP risks and authorize automatic monthly deductions.
+      </label>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="submit" class="btn solid">Start SIP</button>
+      <div id="sipFormMsg" class="form-msg"></div>
+    </div>
+  </form>
+</dialog>
+<!-- ================== SIP HTML END HERE ================== -->
+
+<!-- ================== SIP CSS START HERE ================== -->
+<style>
+  /* Balanced two-column hero (mirrors card style) */
+  .sip-hero{
+    display:grid;
+    grid-template-columns: minmax(400px, 1fr) 340px;
+    gap:16px;
+    align-items:center;
+    min-height: 220px;
+  }
+
+  /* Compact, subtle "card" */
+  .sip-msg-card{
+    position:relative;
+    border:1px solid rgba(160,255,80,.22);
+    background: linear-gradient(135deg, rgba(160,255,80,.08), rgba(255,255,255,.03));
+    border-radius:12px;
+    padding:16px 18px;
+    min-height: 120px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .sip-chip{
+    position:absolute; width:32px; height:22px; border-radius:6px;
+    left:16px; top:12px;
+    background: linear-gradient(180deg,#f8d063,#caa246);
+    opacity:.28;
+  }
+  .sip-msg .lead{ font-size:15.5px; margin:0 0 6px; }
+  .sip-msg p{ margin:4px 0; font-size:14px; line-height:1.55; }
+
+  /* Right image – a touch smaller, no wrapper chrome */
+  .sip-art{
+    display:flex; align-items:center; justify-content:center;
+    background:transparent !important; border:0 !important; box-shadow:none !important;
+    min-height:220px;
+  }
+  .sip-img{
+    height: 100%;
+    max-height: 220px;
+    width: auto;
+    object-fit: contain;
+    background:transparent; border:0; box-shadow:none; border-radius:0;
+    transform-origin: 60% 60%;
+    transition: transform .16s ease;
+  }
+  .sip-img:hover{ transform: translateY(-1px) scale(1.01); }
+
+  .sip-list{ margin-top:12px; }
+
+  @media (max-width: 1000px){
+    .sip-hero{ grid-template-columns: 1fr; }
+    .sip-art{ min-height: 200px; }
+    .sip-img{ max-height: 200px; }
+  }
+</style>
+<!-- ================== SIP CSS END HERE ================== -->
+
+<!-- ================== SOVEREIGN GOLD BONDS CSS START HERE ================== -->
+<style>
+  /* SGB Hero Layout */
+  .sgb-hero{
+    display:grid;
+    grid-template-columns: minmax(400px, 1fr) 340px;
+    gap:16px;
+    align-items:center;
+    min-height: 220px;
+  }
+
+  /* Compact, subtle "card" */
+  .sgb-msg-card{
+    position:relative;
+    border:1px solid rgba(255,215,0,.22);
+    background: linear-gradient(135deg, rgba(255,215,0,.08), rgba(255,255,255,.03));
+    border-radius:12px;
+    padding:16px 18px;
+    min-height: 120px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .sgb-chip{
+    position:absolute; width:32px; height:22px; border-radius:6px;
+    left:16px; top:12px;
+    background: linear-gradient(180deg,#ffd700,#ffb347);
+    opacity:.28;
+  }
+  .sgb-msg .lead{ font-size:15.5px; margin:0 0 6px; }
+  .sgb-msg p{ margin:4px 0; font-size:14px; line-height:1.55; }
+
+  /* Right image – a touch smaller, no wrapper chrome */
+  .sgb-art{
+    display:flex; align-items:center; justify-content:center;
+    min-height: 200px;
+    background:transparent;
+  }
+  .sgb-img{
+    height: 100%;
+    max-height: 220px;
+    width: auto;
+    object-fit: contain;
+    background:transparent; border:0; box-shadow:none; border-radius:0;
+    transform-origin: 60% 60%;
+    transition: transform .16s ease;
+  }
+  .sgb-img:hover{ transform: translateY(-1px) scale(1.01); }
+
+  .sgb-list{ margin-top:12px; }
+
+  @media (max-width: 1000px){
+    .sgb-hero{ grid-template-columns: 1fr; }
+    .sgb-art{ min-height: 200px; }
+    .sgb-img{ max-height: 200px; }
+  }
+</style>
+<!-- ================== SOVEREIGN GOLD BONDS CSS END HERE ================== -->
+
+<!-- ================== SIP JS START HERE ================== -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const sipApplyBtn = document.getElementById('sipApplyBtn');
+    const sipDialog   = document.getElementById('sipDialog');
+    const sipClose    = document.getElementById('sipClose');
+    const sipForm     = document.getElementById('sipForm');
+    const sipFormMsg  = document.getElementById('sipFormMsg');
+    const sipBody     = document.getElementById('sipBody');
+    const sipEmpty    = document.getElementById('sipEmpty');
+    const sipMsg      = document.getElementById('sipMsg');
+    const sipRefreshBtn = document.getElementById('sipRefreshBtn');
+
+    // SIP info elements
+    const sipInfoPanel = document.getElementById('sipInfoPanel');
+    const sipInfoText = document.getElementById('sipInfoText');
+    const sipFundType = document.getElementById('sipFundType');
+
+    // --- local helper: GET + parse JSON ---
+    async function jgetLocal(url){
+      const res = await fetch(url);
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const j = await res.json();
+        if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+        return j;
+      }
+      throw new Error(await res.text() || 'Unexpected response');
+    }
+
+    function statusPillLocal(status){
+      const span = document.createElement('span');
+      span.className = 'status-pill ' + ((status==='APPROVED')?'ok':(status==='PENDING'?'':'warn'));
+      span.textContent = status || 'PENDING';
+      return span;
+    }
+
+    function renderSipRow(item){
+      const tr = document.createElement('tr');
+      const currentVal = item.current_value ? ('₹ ' + Number(item.current_value).toFixed(2)) : '₹ 0.00';
+      tr.innerHTML = `
+        <td>${item.id}</td>
+        <td>${item.fund_name || '-'}</td>
+        <td>${item.fund_type || '-'}</td>
+        <td>₹ ${Number(item.monthly_amount).toFixed(2)}</td>
+        <td></td>
+        <td>${currentVal}</td>
+        <td class="right"></td>
+      `;
+      tr.children[4].appendChild(statusPillLocal(item.status || 'PENDING'));
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn ghost';
+      removeBtn.textContent = 'Remove';
+      removeBtn.addEventListener('click', ()=>{
+        tr.remove();
+        if (sipMsg) { sipMsg.classList.remove('error'); sipMsg.textContent = 'Removed from view (does not delete from bank records).'; }
+        if (sipBody && sipBody.children.length === 0 && sipEmpty) sipEmpty.style.display = '';
+      });
+      tr.children[6].appendChild(removeBtn);
+      return tr;
+    }
+
+    async function loadSIPs(){
+      if (!sipBody) return;
+      sipBody.innerHTML = '';
+      if (sipEmpty) sipEmpty.style.display = 'none';
+      try {
+        const res = await jgetLocal('/api/sip/my');
+        const items = res.items || [];
+        if (items.length === 0) {
+          if (sipEmpty) sipEmpty.style.display = '';
+          return;
+        }
+        for (const it of items) sipBody.appendChild(renderSipRow(it));
+      } catch (err) {
+        if (sipMsg) {
+          sipMsg.classList.add('error');
+          sipMsg.textContent = err.message || 'Failed to load SIP investments';
+        }
+        if (sipEmpty) sipEmpty.style.display = '';
+      }
+    }
+
+    if (sipRefreshBtn) sipRefreshBtn.addEventListener('click', ()=> loadSIPs());
+
+    if (sipApplyBtn && sipDialog) {
+      sipApplyBtn.addEventListener('click', () => {
+        sipForm.reset();
+        sipFormMsg.textContent = '';
+        const holder = document.getElementById('holderName');
+        const accNo  = document.getElementById('accNo');
+        if (holder) document.getElementById('sipHolder').value = holder.innerText.trim();
+        if (accNo)  document.getElementById('sipAccNo').value  = accNo.innerText.trim();
+        
+        // Set default start date to next month
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        nextMonth.setDate(1);
+        document.getElementById('sipStartDate').value = nextMonth.toISOString().split('T')[0];
+        
+        if (!sipDialog.open) sipDialog.showModal();
+        updateSipInfo();
+      });
+    }
+
+    if (sipClose && sipDialog) sipClose.addEventListener('click', () => sipDialog.close());
+
+    // Auto-select fund type based on selected fund
+    function autoSelectFundType(){
+      if (!sipFundName || !sipFundType) return;
+      const selectedFund = sipFundName.value;
+      if (selectedFund.includes('Large Cap') || selectedFund.includes('Mid Cap') || 
+          selectedFund.includes('Small Cap') || selectedFund.includes('Technology')) {
+        sipFundType.value = 'EQUITY';
+      } else if (selectedFund.includes('Government') || selectedFund.includes('Corporate') || 
+                 selectedFund.includes('Liquid') || selectedFund.includes('Banking')) {
+        sipFundType.value = 'DEBT';
+      } else if (selectedFund.includes('Balanced') || selectedFund.includes('Conservative') || 
+                 selectedFund.includes('Aggressive') || selectedFund.includes('Multi-Asset')) {
+        sipFundType.value = 'HYBRID';
+      }
+      updateSipInfo();
+    }
+    if (sipFundName) sipFundName.addEventListener('change', autoSelectFundType);
+
+    // SIP Info updater based on fund type
+    function updateSipInfo(){
+      if (!sipInfoPanel || !sipInfoText || !sipFundType) return;
+      const fundType = sipFundType.value;
+      let html = '';
+      if (fundType === 'EQUITY') {
+        html = '<b>Equity Fund</b><br/>Higher risk, higher returns potential.<br/>Expected return: 12% p.a. | Suitable for long-term wealth creation';
+      } else if (fundType === 'DEBT') {
+        html = '<b>Debt Fund</b><br/>Lower risk, stable returns.<br/>Expected return: 8% p.a. | Suitable for conservative investors';
+      } else if (fundType === 'HYBRID') {
+        html = '<b>Hybrid Fund</b><br/>Balanced risk and returns.<br/>Expected return: 10% p.a. | Mix of equity and debt';
+      }
+      if (html) {
+        sipInfoText.innerHTML = html;
+        sipInfoPanel.style.display = '';
+      } else {
+        sipInfoPanel.style.display = 'none';
+      }
+    }
+    if (sipFundType) sipFundType.addEventListener('change', updateSipInfo);
+
+    if (sipForm){
+      sipForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        sipFormMsg.textContent = '';
+        sipFormMsg.classList.remove('error');
+        try {
+          const fd = new FormData(sipForm);
+          const res = await fetch('/api/sip/apply', { method: 'POST', body: fd });
+          const ct  = res.headers.get('content-type') || '';
+          let j;
+          if (ct.includes('application/json')) j = await res.json();
+          else { throw new Error(await res.text() || 'Unexpected response'); }
+          if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+
+          sipFormMsg.textContent = '✅ SIP application submitted';
+          setTimeout(() => sipDialog.close(), 300);
+
+          await loadSIPs();
+        } catch (err) {
+          sipFormMsg.classList.add('error');
+          sipFormMsg.textContent = err.message || 'Submission failed';
+        }
+      });
+    }
+
+    // expose to window for init
+    window.__loadSIPs = loadSIPs;
+  });
+</script>
+<!-- ================== SIP JS END HERE ================== -->
+
+
+<!---------------------------------------------------
+--------------- SIP FACILITY ENDS HERE -----
+----------------------------------------------------->```
+
+<!-- ================== SOVEREIGN GOLD BONDS START HERE ================== -->
+<section id="section-sgb" class="dash-section">
+  <div class="card" id="sgbCard" style="position:relative; overflow:hidden;">
+    <div class="card-head">
+      <h3>Sovereign Gold Bonds</h3>
+    </div>
+    
+    <div class="sgb-hero">
+      <div class="sgb-msg-card">
+        <div class="sgb-chip"></div>
+        <div class="sgb-msg">
+          <p class="lead">🥇 <b>Invest in Government-backed Gold.</b></p>
+          <p>✨ Earn 2.5% annual interest + gold price appreciation.</p>
+          <p>🛡️ Safe, liquid, and tax-efficient investment.</p>
+        </div>
+      </div>
+      <div class="sgb-art">
+        <img src="/static/images/svc-gold.jpg" alt="YourBank Sovereign Gold Bonds" class="sgb-img" loading="lazy" />
+      </div>
+    </div>
+    
+    <div class="card sgb-list">
+      <div class="card-head">
+        <h3>My Gold Bond Investments</h3>
+        <div>
+          <button type="button" class="btn ghost" id="sgbRefreshBtn">Refresh</button>
+          <button type="button" class="btn solid" id="sgbApplyBtn">Apply for SGB</button>
+        </div>
+      </div>
+      <div id="sgbListWrap" class="tx-scroll">
+        <table class="tx loan">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Series</th>
+              <th>Units (grams)</th>
+              <th>Investment Amount</th>
+              <th>Current Value</th>
+              <th>Status</th>
+              <th class="right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="sgbBody"></tbody>
+        </table>
+      </div>
+      <div id="sgbEmpty" class="muted" style="display:none">No Gold Bond investments yet.</div>
+      <div id="sgbMsg" class="form-msg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Apply New SGB Modal -->
+<dialog id="sgbDialog" class="loan-dialog">
+  <form id="sgbForm" method="dialog" enctype="multipart/form-data">
+    <div class="dialog-head">
+      <h3>Apply for Sovereign Gold Bonds</h3>
+      <button type="button" class="icon-btn" id="sgbClose">&times;</button>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Investor Name</label>
+        <input type="text" id="sgbHolder" name="holder_name" readonly />
+      </div>
+      <div class="field">
+        <label class="lbl">Account No.</label>
+        <input type="text" id="sgbAccNo" name="account_no" readonly />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field select-wrap">
+        <label class="lbl">Select Series</label>
+        <select name="series" id="sgbSeries" class="sel" required>
+          <option value="" disabled selected>Choose a series</option>
+          <option value="SGB Series 2024-25">SGB Series 2024-25</option>
+          <option value="SGB Series 2024-26">SGB Series 2024-26</option>
+          <option value="SGB Series 2024-27">SGB Series 2024-27</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl">Investment Amount (₹)</label>
+        <input type="number" name="investment_amount" id="sgbAmount" min="5000" step="100" required />
+      </div>
+    </div>
+
+    <div class="row two">
+      <div class="field">
+        <label class="lbl">Units (Grams)</label>
+        <input type="number" name="units" id="sgbUnits" readonly />
+      </div>
+      <div class="field">
+        <label class="lbl">Current Gold Price</label>
+        <input type="number" id="sgbGoldPrice" readonly />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="lbl">PAN Number</label>
+        <input type="text" name="pan_number" id="sgbPan" pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" placeholder="ABCDE1234F" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="lbl">KYC Documents (optional)</label>
+        <input type="file" name="kyc_file" accept=".jpg,.jpeg,.png,.pdf" />
+      </div>
+    </div>
+
+    <!-- SGB Info Panel -->
+    <div class="inner-card" id="sgbInfoPanel" style="display:none;">
+      <div id="sgbInfoText" class="small"></div>
+    </div>
+
+    <div class="row">
+      <label class="small">
+        <input type="checkbox" id="sgbAgree" required />
+        I understand SGB terms and authorize investment from my account.
+      </label>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="submit" class="btn solid">Apply for SGB</button>
+      <div id="sgbFormMsg" class="form-msg"></div>
+    </div>
+  </form>
+</dialog>
+<!-- ================== SOVEREIGN GOLD BONDS END HERE ================== -->
+
+<!-- ================== SOVEREIGN GOLD BONDS JS START HERE ================== -->
+<script>
+  (function() {
+    // DOM refs
+    const sgbApplyBtn = document.getElementById('sgbApplyBtn');
+    const sgbRefreshBtn = document.getElementById('sgbRefreshBtn');
+    const sgbDialog = document.getElementById('sgbDialog');
+    const sgbClose = document.getElementById('sgbClose');
+    const sgbForm = document.getElementById('sgbForm');
+    const sgbFormMsg = document.getElementById('sgbFormMsg');
+    const sgbBody = document.getElementById('sgbBody');
+    const sgbEmpty = document.getElementById('sgbEmpty');
+    const sgbMsg = document.getElementById('sgbMsg');
+    const sgbHolder = document.getElementById('sgbHolder');
+    const sgbAccNo = document.getElementById('sgbAccNo');
+    const sgbAmount = document.getElementById('sgbAmount');
+    const sgbUnits = document.getElementById('sgbUnits');
+    const sgbGoldPrice = document.getElementById('sgbGoldPrice');
+    const sgbInfoPanel = document.getElementById('sgbInfoPanel');
+    const sgbInfoText = document.getElementById('sgbInfoText');
+
+    // Current gold price (simulated)
+    let currentGoldPrice = 65000; // ₹ per 10 grams
+
+    // Initialize
+    if (sgbGoldPrice) sgbGoldPrice.value = currentGoldPrice;
+
+    // Modal events
+    if (sgbApplyBtn) {
+      sgbApplyBtn.addEventListener('click', () => {
+        if (sgbDialog) {
+          // Pre-fill form
+          if (sgbHolder) sgbHolder.value = '{{ (current_user.first_name or "") ~ (" " ~ current_user.last_name if current_user.last_name else "") or (current_user.email or "User") }}';
+          if (sgbAccNo) sgbAccNo.value = 'Loading...';
+          if (sgbGoldPrice) sgbGoldPrice.value = currentGoldPrice;
+          
+          sgbDialog.showModal();
+          loadAccountInfo();
+        }
+      });
+    }
+
+    if (sgbClose) {
+      sgbClose.addEventListener('click', () => {
+        if (sgbDialog) sgbDialog.close();
+      });
+    }
+
+    if (sgbDialog) {
+      sgbDialog.addEventListener('click', (e) => {
+        if (e.target === sgbDialog) sgbDialog.close();
+      });
+    }
+
+    // Load account info
+    async function loadAccountInfo() {
+      try {
+        const response = await fetch('/api/accounts/my');
+        const data = await response.json();
+        if (response.ok && data.ok && data.accounts && data.accounts.length > 0) {
+          if (sgbAccNo) sgbAccNo.value = data.accounts[0].account_no || 'No Account';
+        } else {
+          if (sgbAccNo) sgbAccNo.value = 'No Account';
+        }
+      } catch (error) {
+        console.error('Error loading account info:', error);
+        if (sgbAccNo) sgbAccNo.value = 'Error';
+      }
+    }
+
+    // Calculate units based on amount
+    if (sgbAmount) {
+      sgbAmount.addEventListener('input', () => {
+        const amount = parseFloat(sgbAmount.value) || 0;
+        const units = amount / (currentGoldPrice / 10); // Convert to per gram
+        if (sgbUnits) sgbUnits.value = units.toFixed(4);
+        updateSgbInfo();
+      });
+    }
+
+    // Update SGB info panel
+    function updateSgbInfo() {
+      if (!sgbInfoPanel || !sgbInfoText) return;
+      const amount = parseFloat(sgbAmount.value) || 0;
+      const units = parseFloat(sgbUnits.value) || 0;
+      
+      if (amount > 0) {
+        const annualInterest = amount * 0.025;
+        const html = `
+          <b>Sovereign Gold Bonds Investment</b><br/>
+          Investment: ₹${amount.toFixed(2)}<br/>
+          Units: ${units.toFixed(4)} grams<br/>
+          Annual Interest: ₹${annualInterest.toFixed(2)} (2.5% p.a.)<br/>
+          Tenure: 8 years (exit option after 5th year)<br/>
+          <small>Tax benefits on capital gains at maturity</small>
+        `;
+        sgbInfoText.innerHTML = html;
+        sgbInfoPanel.style.display = '';
+      } else {
+        sgbInfoPanel.style.display = 'none';
+      }
+    }
+
+    // Form submission
+    if (sgbForm) {
+      sgbForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (sgbFormMsg) sgbFormMsg.style.display = 'none';
+
+        const formData = new FormData(sgbForm);
+        
+        try {
+          const response = await fetch('/api/sgb/apply', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok && data.ok) {
+            if (sgbFormMsg) {
+              sgbFormMsg.textContent = 'SGB application submitted successfully!';
+              sgbFormMsg.className = 'form-msg success';
+              sgbFormMsg.style.display = '';
+            }
+            sgbDialog.close();
+            sgbForm.reset();
+            loadSGBs(); // Refresh the list
+          } else {
+            if (sgbFormMsg) {
+              sgbFormMsg.textContent = data.message || 'Failed to submit SGB application';
+              sgbFormMsg.className = 'form-msg error';
+              sgbFormMsg.style.display = '';
+            }
+          }
+        } catch (error) {
+          console.error('SGB application error:', error);
+          if (sgbFormMsg) {
+            sgbFormMsg.textContent = 'Network error. Please try again.';
+            sgbFormMsg.className = 'form-msg error';
+            sgbFormMsg.style.display = '';
+          }
+        }
+      });
+    }
+
+    // Load SGB investments
+    async function loadSGBs() {
+      if (!sgbBody) return;
+      
+      if (sgbMsg) sgbMsg.style.display = 'none';
+      sgbBody.innerHTML = '<tr><td colspan="7" style="padding:12px;color:var(--muted);text-align:center;">Loading…</td></tr>';
+      if (sgbEmpty) sgbEmpty.style.display = 'none';
+
+      try {
+        const response = await fetch('/api/sgb/my');
+        const data = await response.json();
+        
+        if (response.ok && data.ok && Array.isArray(data.items)) {
+          if (data.items.length === 0) {
+            if (sgbEmpty) sgbEmpty.style.display = '';
+            sgbBody.innerHTML = '';
+          } else {
+            if (sgbEmpty) sgbEmpty.style.display = 'none';
+            
+            let rowsHTML = '';
+            data.items.forEach((item, index) => {
+              const currentValue = item.units * (currentGoldPrice / 10);
+              const statusClass = item.status === 'ACTIVE' ? 'ok' : (item.status === 'PENDING' ? '' : 'warn');
+              
+              rowsHTML += `
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                  <td style="padding:15px 8px; vertical-align:top;">${item.id}</td>
+                  <td style="padding:15px 8px; vertical-align:top;">${item.series || '-'}</td>
+                  <td style="padding:15px 8px; vertical-align:top;">${item.units || 0}</td>
+                  <td style="padding:15px 8px; vertical-align:top;">₹ ${Number(item.investment_amount || 0).toFixed(2)}</td>
+                  <td style="padding:15px 8px; vertical-align:top;">₹ ${currentValue.toFixed(2)}</td>
+                  <td style="padding:15px 8px; text-align:center; vertical-align:top;">
+                    <span class="status-pill ${statusClass}">${item.status || 'PENDING'}</span>
+                  </td>
+                  <td style="padding:15px 8px; text-align:center; vertical-align:top;">
+                    <button class="btn ghost small" onclick="viewSGB(${item.id})">View</button>
+                  </td>
+                </tr>
+              `;
+            });
+            
+            sgbBody.innerHTML = rowsHTML;
+          }
+        } else {
+          if (sgbMsg) {
+            sgbMsg.textContent = data.message || 'Failed to load SGB investments';
+            sgbMsg.style.display = '';
+          }
+          sgbBody.innerHTML = '';
+        }
+      } catch (error) {
+        console.error('SGB loading error:', error);
+        if (sgbMsg) {
+          sgbMsg.textContent = 'Network error';
+          sgbMsg.style.display = '';
+        }
+        sgbBody.innerHTML = '';
+      }
+    }
+
+    // View SGB details
+    window.viewSGB = function(id) {
+      alert(`SGB Investment ID: ${id}\n\nThis feature will show detailed SGB investment information including:\n- Investment history\n- Interest earned\n- Current market value\n- Maturity details`);
+    };
+
+    // Refresh button
+    if (sgbRefreshBtn) {
+      sgbRefreshBtn.addEventListener('click', loadSGBs);
+    }
+
+    // Initial load
+    loadSGBs();
+
+    // Expose functions globally
+    window.loadSGBs = loadSGBs;
+  })();
+</script>
+<!-- ================== SOVEREIGN GOLD BONDS JS END HERE ================== -->
+
+      <!-- SECTION: OPEN ACCOUNT (INLINE — ALWAYS ALLOWED) -->
+      <section id="section-open-account" class="dash-section">
+        <div class="card">
+          <h3>Open a New Account</h3>
+          <p>Fill these details to request a new account. Status will be <b>Under Review</b> until approved.</p>
+
+          <form id="openAccForm" enctype="multipart/form-data">
+            <div class="row two">
+              <div class="field"><input type="text" name="full_name" placeholder="Full Name (as per Aadhaar/PAN)" required /></div>
+              <!-- DOB field changed to text with DD/MM/YYYY -->
+              <div class="field">
+                <label class="lbl">Date of Birth</label>
+                <input type="text" name="dob" id="dob" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" required />
+              </div>
+            </div>
+
+            <div class="row two">
+              <div class="field select-wrap">
+                <label class="lbl">Gender</label>
+                <select name="gender" required class="sel">
+                  <option value="" disabled selected>Select</option>
+                  <option>Male</option><option>Female</option><option>Other</option>
+                </select>
+              </div>
+              <div class="field"><input type="tel" name="mobile" placeholder="Mobile Number" required /></div>
+            </div>
+
+            <div class="row two">
+              <div class="field"><input type="email" name="email" placeholder="Email ID" required /></div>
+              <div class="field"><input type="text" name="aadhaar_no" placeholder="Aadhaar Number (12 digits)" maxlength="12" required /></div>
+            </div>
+
+            <div class="row two">
+              <div class="field"><input type="text" name="pan_no" placeholder="PAN Number (ABCDE1234F)" maxlength="10" required /></div>
+              <div class="field select-wrap">
+                <label class="lbl">Occupation / Employment</label>
+                <select name="occupation_type" required class="sel">
+                  <option value="" disabled selected>Select</option>
+                  <option>Salaried</option><option>Self-Employed</option><option>Student</option><option>Retired</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row two">
+              <div class="field select-wrap">
+                <label class="lbl">Annual Income Range</label>
+                <select name="annual_income_range" required class="sel">
+                  <option value="" disabled selected>Select</option>
+                  <option>Below 2.5 Lakh</option>
+                  <option>2.5–5 Lakh</option>
+                  <option>5–10 Lakh</option>
+                  <option>10–25 Lakh</option>
+                  <option>Above 25 Lakh</option>
+                </select>
+              </div>
+              <div class="field select-wrap">
+                <label class="lbl">Account Type</label>
+                <select name="product" required class="sel">
+                  <option value="SAVINGS" selected>Savings</option>
+                  <option value="CURRENT">Current</option>
+                  <option value="SALARY">Salary</option>
+                  <option value="JOINT">Joint</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Addresses side-by-side + Same-as checkbox -->
+            <div class="row two">
+              <div class="field">
+                <input type="text" name="perm_address" id="perm_address" placeholder="Permanent Address (with PIN)" required />
+              </div>
+              <div class="field">
+                <input type="text" name="comm_address" id="comm_address" placeholder="Current/Communication Address (if different)" />
+              </div>
+            </div>
+            <div class="row" style="margin-top:-4px;">
+              <label class="small">
+                <input type="checkbox" id="sameAsPerm" />
+                Same as Permanent Address
+              </label>
+            </div>
+
+            <div class="row two">
+              <div class="field select-wrap">
+                <label class="lbl">Branch</label>
+                <select name="branch_id" required class="sel">
+                  <option value="" disabled selected>Select branch</option>
+                  <option value="1">B001 — Main Branch</option>
+                  <option value="2">B002 — City Branch</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="lbl">Photograph (optional)</label>
+                <input type="file" name="photo_file" accept=".jpg,.jpeg,.png,.webp,.pdf" />
+              </div>
+            </div>
+
+            <div class="row two">
+              <div class="field">
+                <label class="lbl">Aadhaar (Image/PDF)</label>
+                <input type="file" name="aadhaar_file" accept=".jpg,.jpeg,.png,.webp,.pdf" required />
+              </div>
+              <div class="field">
+                <label class="lbl">PAN (Image/PDF)</label>
+                <input type="file" name="pan_file" accept=".jpg,.jpeg,.png,.webp,.pdf" required />
+              </div>
+            </div>
+
+            <div class="row"><label><input type="checkbox" required /> I confirm the details are true and authorize KYC.</label></div>
+
+            <button type="submit" class="btn solid">Submit Request</button>
+            <div class="form-msg" id="openAccFormMsg"></div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+
+  <!---------------------------------------------------
+  ----------------CSS Code Start --------------------
+  ---------------------------------------------------->
+
+<style>
+  /* Scope all dashboard styles so navbar remains unchanged */
+  .dashboard{
+    --panel: #ffffff;
+    --panelBorder: #e2e8f0;
+    --muted: #4a5568;
+    --text: #000000;
+    --dropBg: #ffffff;
+    --dropHover: #f7fafc;
+  }
+  .dashboard .hidden{display:none}
+  .dashboard .small{font-size:12px}
+  .dashboard .mt8{margin-top:8px}
+  .dashboard .mt10{margin-top:10px}
+  .dashboard .mb8{margin-bottom:8px}
+  .dashboard .muted{color:var(--muted)}
+
+  /* Grid */
+  .dashboard .dash-grid{
+    display:grid;
+    grid-template-columns: 270px 1fr;
+    gap:20px;
+    max-width:1200px;
+    margin:24px auto;
+    padding:0 16px;
+    align-items: stretch;
+  }
+
+  /* Sidebar */
+  .dashboard .dash-sidebar{
+    background: var(--panel);
+    border:1px solid var(--panelBorder);
+    border-radius:14px;
+    padding:16px;
+    color: var(--text);
+    display:flex; flex-direction:column;
+  }
+  .dashboard .profile-card{ display:flex; gap:12px; align-items:center; margin-bottom:16px; }
+  .dashboard .avatar{
+    width:44px; height:44px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: #e2e8f0; border:1px solid #4299e1;
+    font-weight:700;
+  }
+  .dashboard .profile-meta .name{ font-weight:700; }
+  .dashboard .profile-meta .tag{ font-size:12px; color: var(--muted); }
+
+  .dashboard .nav-group{ margin:16px 0; }
+  .dashboard .nav-title{ font-size:12px; color: var(--muted); text-transform:uppercase; margin-bottom:6px; letter-spacing:.04em; }
+  .dashboard .nav-btn{
+    width:100%; text-align:left; padding:10px 12px;
+    border:1px solid var(--panelBorder); border-radius:10px;
+    background: #ffffff;
+    color: var(--text);
+    margin-bottom:8px; cursor:pointer;
+    transition: background .15s, border-color .15s, transform .05s;
+  }
+  .dashboard .nav-btn:hover{ background: #f7fafc; }
+  .dashboard .nav-btn:active{ transform: scale(.995); }
+  .dashboard .nav-btn.active{
+    background: #e2e8f0;
+    border-color: #4299e1;
+  }
+
+  /* Main */
+  .dashboard .dash-main{ color: var(--text); }
+  .dashboard .dash-section{ display:none; }
+  .dashboard .dash-section.show{ display:block; }
+
+  .dashboard .card{
+    background: var(--panel);
+    border:1px solid var(--panelBorder);
+    border-radius:14px;
+    padding:18px;
+    color: var(--text);
+  }
+  .dashboard .card.tall{ min-height: 360px; }
+
+  .dashboard .card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px }
+  .dashboard .status-pill{
+    border:1px solid #4299e1;
+    background: #e6f3ff;
+    border-radius:20px; padding:4px 10px; font-size:12px; color: var(--text);
+  }
+  .dashboard .status-pill.warn{
+    border-color:#f6ad55;background:#fef5e7;
+  }
+  .dashboard .status-pill.ok{
+    border-color:#68d391;background:#f0fff4;
+  }
+  .dashboard .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .dashboard .span2{ grid-column:1/-1; }
+  .dashboard .rule{ height:1px; background:#e2e8f0; margin:12px 0 }
+  .dashboard .balance{ display:flex; align-items:center; justify-content:space-between }
+  .dashboard .bal{ font-size:22px; font-weight:800; color: var(--text); }
+
+  .dashboard .inner-card{
+    border:1px solid #e2e8f0; background:#f7fafc; padding:12px; border-radius:10px; margin-bottom:12px; color:var(--text);
+  }
+  .dashboard .callout.warn{
+    margin-top:10px; color:#744210; background:#fef5e7;
+    border:1px solid #f6ad55; padding:8px; border-radius:8px;
+  }
+
+  .dashboard .row.two{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .dashboard .field input, .dashboard .field select, .dashboard .sel{
+    width:100%; padding:10px 12px; border:1px solid var(--panelBorder); border-radius:10px;
+    background: #ffffff; color: var(--text);
+  }
+  .dashboard .lbl{ display:block; margin-bottom:6px; font-weight:600; color: var(--muted); }
+
+  /* === Transparent, dark selects (no white popup) === */
+  .dashboard .field select.sel,
+  .dashboard .sel {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--panelBorder);
+    color: var(--text);
+    padding: 10px 36px 10px 12px;
+    cursor: pointer;
+    color-scheme: dark;
+    background-clip: padding-box;
+  }
+  .dashboard .field select.sel:hover,
+  .dashboard .sel:hover {
+    border-color: #4299e1;
+    background: #f7fafc;
+  }
+  .dashboard .field select.sel:focus,
+  .dashboard .sel:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66,153,225,.15);
+    background: #ffffff;
+  }
+  .dashboard .field select.sel option,
+  .dashboard .sel option{
+    background: #ffffff;
+    color: var(--text);
+  }
+  .dashboard .field select.sel option:checked{ background: #f7fafc; }
+  .dashboard .field select.sel option:hover{ background: #f7fafc; color: #000000; }
+  select.sel:-moz-focusring { color: transparent; text-shadow: 0 0 0 var(--text); }
+
+  /* Custom dropdown chevron */
+  .dashboard .field.select-wrap { position: relative; }
+  .dashboard .field.select-wrap::after{
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 10px; height: 10px;
+    pointer-events: none;
+    transform: translateY(-50%) rotate(45deg);
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    opacity: .85;
+  }
+
+  /* --- Hard reset for table semantics inside dashboard --- */
+  .dashboard table            { display: table; border-collapse: collapse; width: 100%; }
+  .dashboard table thead      { display: table-header-group; }
+  .dashboard table tbody      { display: table-row-group; }
+  .dashboard table tr         { display: table-row; }
+  .dashboard table th,
+  .dashboard table td         { display: table-cell; vertical-align: middle; }
+
+  /* Transactions & Loans tables */
+  .dashboard .tx{ width:100%; border-collapse:collapse; table-layout:fixed; color:var(--text); font-size:14px; }
+  .dashboard .tx thead th{
+    position:sticky; top:0; background: #ffffff;
+    text-align:left; padding:10px 12px; border-bottom:1px solid #e2e8f0; color:var(--muted);
+    backdrop-filter: blur(2px);
+  }
+  .dashboard .tx tbody td{ padding:10px 12px; border-bottom:1px dashed #e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dashboard .tx .right{ text-align:right; }
+
+  /* Loan Facility table columns – adjusted widths for tighter alignment */
+  .dashboard .tx.loan th { text-align: left; }
+  .dashboard .tx.loan td { text-align: left; }
+
+  .dashboard .tx.loan th:nth-child(1),
+  .dashboard .tx.loan td:nth-child(1) {
+    width: 70px; text-align:center;
+  }
+  .dashboard .tx.loan th:nth-child(2),
+  .dashboard .tx.loan td:nth-child(2) {
+    width: 120px;
+  }
+  .dashboard .tx.loan th:nth-child(3),
+  .dashboard .tx.loan td:nth-child(3) {
+    width: 120px;   /* Amount closer */
+  }
+  .dashboard .tx.loan th:nth-child(4),
+  .dashboard .tx.loan td:nth-child(4) {
+    width: 160px;   /* Purpose closer */
+  }
+  .dashboard .tx.loan th:nth-child(5),
+  .dashboard .tx.loan td:nth-child(5) {
+    width: 90px; text-align: center;  /* Status closer */
+  }
+  .dashboard .tx.loan th:nth-child(6),
+  .dashboard .tx.loan td:nth-child(6) {
+    width: 110px; text-align: center; /* Submitted closer */
+  }
+  .dashboard .tx.loan th:nth-child(7),
+  .dashboard .tx.loan td:nth-child(7) {
+    width: 100px; text-align:right;   /* Action closer */
+  }
+
+  /* Fix Last Status pill */
+  .dashboard #loanLastStatus.status-pill {
+    display: inline-block;
+    float: right;
+    min-width: 80px;
+    text-align: center;
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 14px;
+  }
+
+  /* Scroll area for lists */
+  .dashboard .tx-scroll{
+    max-height: 310px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+  }
+  .dashboard .tx-scroll::-webkit-scrollbar{ width: 10px; }
+  .dashboard .tx-scroll::-webkit-scrollbar-thumb{
+    background: rgba(0,0,0,0.12);
+    border-radius: 8px;
+  }
+
+  .dashboard .form-msg{ margin-top:10px; color:#38a169; font-weight:600; }
+  .dashboard .form-msg.error{ color:#e53e3e; }
+
+  /* Loan dialog */
+.loan-dialog{
+  border:none; border-radius:14px; padding:0; width:min(720px, 92vw); background:#ffffff; color:var(--text);
+}
+.loan-dialog::backdrop{ background: rgba(0,0,0,0.6); }
+.loan-dialog form{ padding:16px; }
+.dialog-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding:16px; border-bottom:1px solid #e2e8f0; }
+.icon-btn{ background:transparent; border:1px solid #e2e8f0; border-radius:8px; width:36px; height:36px; color:var(--text); cursor:pointer; }
+.dialog-actions{ display:flex; align-items:center; gap:12px; margin-top:10px; }
+
+/* === Added: Loan dialog dark scrollbar === */
+.loan-dialog::-webkit-scrollbar { width: 10px; }
+.loan-dialog::-webkit-scrollbar-track { background: #ffffff; }
+.loan-dialog::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0;
+  border-radius: 6px;
+  border: 2px solid #ffffff;
+}
+
+@media (max-width: 900px){
+  .dashboard .dash-grid{ grid-template-columns: 1fr; }
+  .dashboard .grid2{ grid-template-columns:1fr; }
+  .dashboard .row.two{ grid-template-columns: 1fr; }
+  .dashboard .tx-scroll{ max-height: 380px; }
+}
+
+</style>
+
+  <!---------------------------------------------------
+  ----------------CSS Code END --------------------
+  ---------------------------------------------------->
+
+
+
+  <!---------------------------------------------------
+  ----------------Scripts Code Start --------------------
+  ---------------------------------------------------->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Sidebar tab switch
+  const sections = [...document.querySelectorAll('.dash-section')];
+  const buttons  = [...document.querySelectorAll('.nav-btn')];
+
+  function showSection(id){
+    sections.forEach(s => s.classList.remove('show'));
+    document.getElementById(id)?.classList.add('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.target === 'section-internet') prefillIBFields();
+      if (btn.dataset.target === 'section-transfer') enforceSendMoneyIBGuard();
+      if (btn.dataset.target === 'section-loan') { ensureLoansLoaded(); }
+      if (btn.dataset.target === 'section-sgb') { if (window.loadSGBs) window.loadSGBs(); }
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showSection(btn.dataset.target);
+    });
+  });
+
+  // Handle deep link: /dashboard#open-account
+  function openByHash(){
+    const hash = (location.hash || '').toLowerCase();
+    if (hash === '#open-account') {
+      const navBtn = document.querySelector('.nav-btn[data-target="section-open-account"]');
+      if (navBtn) {
+        buttons.forEach(b => b.classList.remove('active'));
+        navBtn.classList.add('active');
+        showSection('section-open-account');
+      }
+    }
+    if (hash === '#loan') {
+      const navBtn = document.querySelector('.nav-btn[data-target="section-loan"]');
+      if (navBtn) {
+        buttons.forEach(b => b.classList.remove('active'));
+        navBtn.classList.add('active');
+        showSection('section-loan');
+        ensureLoansLoaded();
+      }
+    }
+    if (hash === '#sgb') {
+      const navBtn = document.querySelector('.nav-btn[data-target="section-sgb"]');
+      if (navBtn) {
+        buttons.forEach(b => b.classList.remove('active'));
+        navBtn.classList.add('active');
+        showSection('section-sgb');
+        if (window.loadSGBs) window.loadSGBs();
+      }
+    }
+  }
+  window.addEventListener('hashchange', openByHash);
+
+  // From Account Details card to Open Account section
+  const goOpen = document.getElementById('goOpenAccount');
+  if (goOpen) {
+    goOpen.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      document.querySelector('.nav-btn[data-target="section-open-account"]')?.classList.add('active');
+      showSection('section-open-account');
+    });
+  }
+
+  // ---------- Robust fetch helpers ----------
+  async function parseMaybeJsonResponse(res){
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await res.json();
+    const text = await res.text();
+    const firstLine = (text || '').split('\n').find(l => l.trim()) || 'Unexpected response';
+    return { ok: false, message: firstLine };
+  }
+  const jget = async (url)=>{
+    const r = await fetch(url);
+    const j = await parseMaybeJsonResponse(r);
+    if(!r.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+    return j;
+  };
+  const jpost = async (url, data)=>{
+    const r = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    const j = await parseMaybeJsonResponse(r);
+    if(!r.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+    return j;
+  };
+
+  // Refs
+  const noAccCard   = document.getElementById('noAccountCard');
+  const accSummary  = document.getElementById('accountSummary');
+  const accStatus   = document.getElementById('accStatus');
+  const accProduct  = document.getElementById('accProduct');
+  const accNo       = document.getElementById('accNo');
+  const ifsc        = document.getElementById('ifsc');
+  const branchId    = document.getElementById('branchId');
+  const branchCode  = document.getElementById('branchCode');
+  const balanceEl   = document.getElementById('balance');
+  const underRev    = document.getElementById('underReview');
+
+  const txBody      = document.getElementById('txBody');
+  const txEmpty     = document.getElementById('txEmpty');
+  const txScroll    = document.getElementById('txScroll');
+  const txLoadingEl = document.getElementById('txLoading');
+  const refreshTx   = document.getElementById('refreshTx');
+
+  // IB refs
+  const ibBadge   = document.getElementById('ibBadge');
+  const ibActivateForm = document.getElementById('ibActivateForm');
+  const ibMsg = document.getElementById('ibMsg');
+  const ibAccNo = document.getElementById('ibAccNo');
+  const ibName  = document.getElementById('ibName');
+  const ibMobile= document.getElementById('ibMobile');
+  const ibPin   = document.getElementById('ibPin');
+  const ibActiveView = document.getElementById('ibActiveView');
+  const ibLast2 = document.getElementById('ibLast2');
+  const ibDeactForm = document.getElementById('ibDeactivateForm');
+  const ibDeactPin  = document.getElementById('ibDeactPin');
+  const ibDeactMsg  = document.getElementById('ibDeactMsg');
+
+  // PIN refs
+  const pinForm = document.getElementById('pinForm');
+  const pinMsg  = document.getElementById('pinMsg');
+  const pinOld  = document.getElementById('pinOld');
+  const pinNew  = document.getElementById('pinNew');
+  const pinConfirm = document.getElementById('pinConfirm');
+
+  // Pay refs
+  const payForm = document.getElementById('payForm');
+  const payMsg  = document.getElementById('payMsg');
+  const payFrom = document.getElementById('payFrom');
+  const payTo   = document.getElementById('payTo');
+  const payAmt  = document.getElementById('payAmt');
+  const payPin  = document.getElementById('payPin');
+  const payLockedMsg = document.getElementById('payLockedMsg');
+
+  // Address sync refs
+  const permAddressEl = document.getElementById('perm_address');
+  const commAddressEl = document.getElementById('comm_address');
+  const sameAsPermCb  = document.getElementById('sameAsPerm');
+
+  // DOB refs
+  const dobInput = document.getElementById('dob');
+
+  // Loan refs
+  const loanApplyBtn = document.getElementById('loanApplyBtn');
+  const loanRefreshBtn = document.getElementById('loanRefreshBtn');
+  const loanDialog = document.getElementById('loanDialog');
+  const loanClose = document.getElementById('loanClose');
+  const loanForm = document.getElementById('loanForm');
+  const loanFormMsg = document.getElementById('loanFormMsg');
+  const loanBody = document.getElementById('loanBody');
+  const loanEmpty = document.getElementById('loanEmpty');
+  const loanMsg = document.getElementById('loanMsg');
+  const loanCount = document.getElementById('loanCount');
+  const loanLastStatus = document.getElementById('loanLastStatus');
+
+  const loanAmount = document.getElementById('loanAmount');
+  const loanProduct = document.getElementById('loanProduct');
+  const loanPurpose = document.getElementById('loanPurpose');
+  const loanAgree = document.getElementById('loanAgree');
+  
+  // ROI info elements
+  const loanRoiInfo = document.getElementById('loanRoiInfo');
+  const loanRoiText = document.getElementById('loanRoiText');
+
+  let activeAccount = null;
+  window.__ibActive = false;
+  let __loansLoadedOnce = false;
+
+  // ---------- Helpers ----------
+  const fmtCurrency = n => '₹ ' + Number(n || 0).toFixed(2);
+  const fmtDate = (iso)=> {
+    const d = new Date(iso);
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = d.getFullYear();
+    return `${dd}/${mm}/${yy}`;
+  };
+  const fmtTime = (iso)=> {
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  };
+
+  function statusPill(status){
+    const span = document.createElement('span');
+    span.className = 'status-pill ' + ((status==='APPROVED')?'ok':(status==='PENDING'?'':'warn'));
+    span.textContent = status;
+    return span;
+  }
+
+  function prefillIBFields(){
+    if (!activeAccount) return;
+    if (ibAccNo && !ibAccNo.value) ibAccNo.value = activeAccount.account_no || '';
+    const holder = document.getElementById('holderName');
+    if (ibName && !ibName.value && holder) ibName.value = holder.innerText.trim();
+    const profPhone = document.getElementById('profPhone');
+    if (ibMobile && !ibMobile.value && profPhone && profPhone.value) ibMobile.value = profPhone.value;
+  }
+
+  function enforceSendMoneyIBGuard(){
+    const on = !!window.__ibActive;
+    if (payForm) {
+      [...payForm.querySelectorAll('input,button')].forEach(el => {
+        if (el.id === 'payFrom') return;
+        if (on) el.removeAttribute('disabled'); else el.setAttribute('disabled','disabled');
+      });
+    }
+    if (payLockedMsg) payLockedMsg.style.display = on ? 'none' : '';
+  }
+
+  // ---------- No-account messages ----------
+  function renderNoAccountCard(title, lines=[]) {
+    const body = (lines || []).map(l => `<p>${l}</p>`).join('');
+    return `
+      <div class="card tall">
+        <h3>${title}</h3>
+        ${body}
+        <div class="inner-card">
+          <b>Tip:</b> Go to <em>Account Details → Open Account</em> to submit your application.
+        </div>
+      </div>`;
+  }
+
+  function lockSectionsForNoAccount(){
+    const txCard = document.getElementById('txCard');
+    if (txCard) {
+      txCard.innerHTML = renderNoAccountCard('Recent Transactions',[
+        'Dear customer, you don’t have any active account with YourBank yet.',
+        'There are no transactions to display.',
+        'Please open an account or contact your branch for assistance.'
+      ]);
+    }
+    const ibCard = document.getElementById('ibCard');
+    if (ibCard) {
+      ibCard.innerHTML = renderNoAccountCard('Internet Banking',[
+        'We can’t proceed with Internet Banking because you don’t have an active account.',
+        'Open an account first to enable Internet Banking (PIN setup and transfers).'
+      ]);
+    }
+    // Loan section note
+    const loanCard = document.getElementById('loanCard');
+    if (loanCard) {
+      loanMsg.classList.add('error');
+      loanMsg.textContent = 'Open an account to apply for a loan.';
+    }
+    enforceSendMoneyIBGuard();
+  }
+
+  // ---------- Data loaders ----------
+  async function loadAccounts(){
+    try{
+      const data = await jget('/api/accounts/my');
+      const items = data.accounts || [];
+      window.__hasAccount = (items.length > 0);
+
+      if(items.length === 0){
+        noAccCard.style.display = '';
+        accSummary.style.display = 'none';
+        lockSectionsForNoAccount();
+        openByHash();
+        return;
+      }
+
+      activeAccount = items[0];
+
+      noAccCard.style.display = 'none';
+      accSummary.style.display = '';
+
+      accStatus.textContent = activeAccount.status;
+      accProduct.textContent = activeAccount.product;
+      accNo.textContent     = activeAccount.account_no;
+      branchId.textContent  = activeAccount.branch_id;
+      ifsc.textContent      = activeAccount.ifsc || '—';
+      branchCode.textContent= activeAccount.branch_code || '—';
+
+      const isActive = activeAccount.status === 'ACTIVE';
+      underRev.style.display = isActive ? 'none' : '';
+
+      if (payFrom) payFrom.value = activeAccount.account_no || '';
+      prefillIBFields();
+
+      const bal = await jget(`/api/accounts/${activeAccount.id}/balance`);
+      balanceEl.textContent = fmtCurrency(bal.balance);
+
+      await applyIBStatus();
+      enforceSendMoneyIBGuard();
+
+      // reset tx feed and load first page
+      resetTxFeed();
+      await loadTxPage();
+
+      // Load loans if user is on loans section or once on first load
+      if (__loansLoadedOnce || document.getElementById('section-loan').classList.contains('show')) {
+        await loadLoans();
+      }
+
+      openByHash();
+    }catch(e){
+      console.error(e);
+      accStatus.textContent = 'Error';
+    }
+  }
+
+  async function applyIBStatus(){
+    if(!activeAccount) { window.__ibActive = false; return; }
+    try{
+      const res = await jget(`/api/ib/status?account_id=${activeAccount.id}`);
+      window.__ibActive = !!res.active;
+
+      if(res.active){
+        ibBadge.textContent = 'Status: Active';
+        document.getElementById('ibSub').textContent = 'Manage PIN or deactivate internet banking.';
+        ibActivateForm.classList.add('hidden');
+        ibActiveView.classList.remove('hidden');
+        ibLast2.textContent = (res.last2 || 'XX');
+      }else{
+        ibBadge.textContent = 'Status: Not Activated';
+        document.getElementById('ibSub').textContent = 'Set a 4 or 6 digit PIN to enable Send Money.';
+        ibActiveView.classList.add('hidden');
+        ibActivateForm.classList.remove('hidden');
+      }
+      prefillIBFields();
+    }catch(e){
+      ibBadge.textContent = 'Status: Error';
+      window.__ibActive = false;
+    }
+  }
+
+  // ---------- Transactions: infinite scroll ----------
+  let txCursor = null;      // opaque cursor string from backend
+  let txBusy = false;
+  let txEnd = false;
+
+  function setTxLoading(show){
+    if (txLoadingEl) txLoadingEl.style.display = show ? 'block' : 'none';
+  }
+
+  function resetTxFeed(){
+    if (txBody) txBody.innerHTML = '';
+    txCursor = null;
+    txEnd = false;
+    if (txEmpty) txEmpty.style.display = 'none';
+  }
+
+  function renderTxRow(r){
+    const posted = r.posted_at || r.postedAt || null;
+    const date = posted ? fmtDate(posted) : '-';
+    const time = posted ? fmtTime(posted) : '-';
+    const type = r.tx_type || r.type || '-';
+    const fromNo = r.from_account_no || r.from_account || r.from || '-';
+    const toNo   = r.to_account_no   || r.to_account   || r.to   || '-';
+    const drcr = r.dr_cr || r.side || '-';
+    const amount = fmtCurrency(r.amount);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${date}</td>
+      <td>${time}</td>
+      <td>${type}</td>
+      <td>${fromNo || '-'}</td>
+      <td>${toNo || '-'}</td>
+      <td>${drcr}</td>
+      <td class="right">${amount}</td>
+    `;
+    return tr;
+  }
+
+  async function loadTxPage(){
+    if (!activeAccount || txBusy || txEnd) return;
+    txBusy = true;
+    setTxLoading(true);
+
+    const url = `/api/accounts/${activeAccount.id}/tx?limit=25` + (txCursor ? `&cursor=${encodeURIComponent(txCursor)}` : '');
+    try{
+      const resp = await jget(url);
+      const items = resp.items || [];
+      if (items.length === 0 && !txCursor) {
+        if (txEmpty) txEmpty.style.display = '';
+      } else {
+        for (const r of items) txBody.appendChild(renderTxRow(r));
+      }
+      txCursor = resp.next_cursor || null;
+      txEnd = !txCursor;
+    }catch(e){
+      // Fallback (legacy): show last5 only once
+      try{
+        const data = await jget(`/api/accounts/${activeAccount.id}/last5`);
+        const rows = data.items || [];
+        if(rows.length === 0){ if (txEmpty) txEmpty.style.display = ''; }
+        for(const r of rows) txBody.appendChild(renderTxRow({
+          posted_at: r.posted_at,
+          tx_type: r.tx_type,
+          from_account_no: '',
+          to_account_no: '',
+          dr_cr: r.dr_cr,
+          amount: r.amount
+        }));
+        txEnd = true;
+      }catch(e2){
+        console.error(e2);
+        if (txEmpty) txEmpty.style.display = '';
+        txEnd = true;
+      }
+    } finally {
+      txBusy = false;
+      setTxLoading(false);
+    }
+  }
+
+  // Scroll listener (load more near bottom)
+  if (txScroll){
+    txScroll.addEventListener('scroll', () => {
+      const nearBottom = (txScroll.scrollTop + txScroll.clientHeight) >= (txScroll.scrollHeight - 24);
+      if (nearBottom) loadTxPage();
+    });
+  }
+
+  // Refresh button
+  if (refreshTx) {
+    refreshTx.addEventListener('click', async ()=>{
+      resetTxFeed();
+      await loadTxPage();
+    });
+  }
+
+  // ---------- Profile update ----------
+  const profForm = document.getElementById('profForm');
+  const profMsg  = document.getElementById('profMsg');
+  const profName = document.getElementById('profName');
+  const profEmail= document.getElementById('profEmail');
+  const profPhone= document.getElementById('profPhone');
+  const profAddr = document.getElementById('profAddr');
+
+  if(profForm){
+    const holder = document.getElementById('holderName');
+    if(holder) profName.value = holder.innerText.trim();
+    profEmail.value = '{{ current_user.email or "" }}';
+
+    profForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      profMsg.textContent = '';
+      try{
+        await jpost('/api/customers/init', {
+          full_name: profName.value || undefined,
+          phone: profPhone.value || '',
+          address: profAddr.value || ''
+        });
+        profMsg.classList.remove('error');
+        profMsg.textContent = '✅ Profile updated';
+        prefillIBFields();
+      }catch(e){
+        profMsg.classList.add('error');
+        profMsg.textContent = e.message || 'Update failed';
+      }
+    });
+  }
+
+  // ---- Address sync (Same as Permanent) ----
+  function applySameAsPerm() {
+    if (!permAddressEl || !commAddressEl || !sameAsPermCb) return;
+    if (sameAsPermCb.checked) {
+      commAddressEl.value = permAddressEl.value;
+      commAddressEl.setAttribute('readonly', 'readonly');
+      commAddressEl.classList.add('muted');
+    } else {
+      commAddressEl.removeAttribute('readonly');
+      commAddressEl.classList.remove('muted');
+    }
+  }
+  if (sameAsPermCb) sameAsPermCb.addEventListener('change', applySameAsPerm);
+  if (permAddressEl) {
+    permAddressEl.addEventListener('input', () => {
+      if (sameAsPermCb && sameAsPermCb.checked) applySameAsPerm();
+    });
+  }
+
+  // ---- DOB input: live formatting + validation ----
+  function toIsoFromDDMMYYYY(str){
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str || '');
+    if(!m) throw new Error('Enter DOB as DD/MM/YYYY');
+    const d = +m[1], mo = +m[2], y = +m[3];
+    const dt = new Date(Date.UTC(y, mo-1, d));
+    const valid = dt.getUTCFullYear()===y && (dt.getUTCMonth()+1)===mo && dt.getUTCDate()===d;
+    if(!valid) throw new Error('Invalid date');
+    return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  if (dobInput){
+    dobInput.addEventListener('input', (e)=>{
+      let v = e.target.value.replace(/[^\d]/g,'').slice(0,8);
+      if(v.length >= 5) v = `${v.slice(0,2)}/${v.slice(2,4)}/${v.slice(4,8)}`;
+      else if(v.length >= 3) v = `${v.slice(0,2)}/${v.slice(2,4)}`;
+      e.target.value = v;
+    });
+  }
+
+  // ---------- IB actions ----------
+  if(ibActivateForm){
+    ibActivateForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      ibMsg.textContent = '';
+      try{
+        await jpost('/api/ib/activate', {
+          account_no: ibAccNo.value,
+          name: ibName.value || '',
+          mobile: ibMobile.value || '',
+          pin: ibPin.value
+        });
+        ibMsg.classList.remove('error');
+        ibMsg.textContent = '✅ Internet banking activated';
+        await applyIBStatus();
+        enforceSendMoneyIBGuard();
+      }catch(e){
+        if((e.message || '').toLowerCase().includes('already')){
+          await applyIBStatus();
+          ibMsg.classList.remove('error');
+          ibMsg.textContent = 'Already activated — you can change PIN below.';
+        }else{
+          ibMsg.classList.add('error');
+          ibMsg.textContent = e.message || 'Activation failed';
+        }
+      }
+    });
+  }
+
+  if(pinForm){
+    pinForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      pinMsg.textContent = '';
+      try{
+        await jpost('/api/ib/change_pin', {
+          account_no: (activeAccount && activeAccount.account_no) || ibAccNo.value,
+          old_pin: pinOld.value,
+          new_pin: pinNew.value,
+          confirm_new_pin: pinConfirm.value
+        });
+        pinMsg.classList.remove('error');
+        pinMsg.textContent = '✅ PIN changed';
+        pinOld.value = pinNew.value = pinConfirm.value = '';
+        await applyIBStatus();
+      }catch(e){
+        pinMsg.classList.add('error');
+        pinMsg.textContent = e.message || 'Change PIN failed';
+      }
+    });
+  }
+
+  if(ibDeactForm){
+    ibDeactForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      ibDeactMsg.textContent = '';
+      try{
+        await jpost('/api/ib/deactivate', {
+          account_no: (activeAccount && activeAccount.account_no) || ibAccNo.value,
+          pin: ibDeactPin.value
+        });
+        ibDeactMsg.classList.remove('error');
+        ibDeactMsg.textContent = '✅ Internet banking deactivated';
+        ibDeactPin.value = '';
+        await applyIBStatus();
+        enforceSendMoneyIBGuard();
+      }catch(e){
+        ibDeactMsg.classList.add('error');
+        ibDeactMsg.textContent = e.message || 'Deactivate failed';
+      }
+    });
+  }
+
+  // ---------- Send money ----------
+  if(payForm){
+    payForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      payMsg.textContent = '';
+      if (!window.__ibActive) {
+        payMsg.classList.add('error');
+        payMsg.textContent = 'Please activate Internet Banking to use Send Money.';
+        return;
+      }
+      try{
+        const amt = Number(payAmt.value);
+        if(!(amt > 0)) throw new Error('Enter a valid amount');
+        const resp = await jpost('/api/ib/transfer', {
+          from_account_no: payFrom.value,
+          to_account_no: payTo.value,
+          amount: amt,
+          pin: payPin.value
+        });
+        payMsg.classList.remove('error');
+        payMsg.textContent = `✅ Sent ₹ ${Number(resp.amount||0).toFixed(2)} to ${resp.to_account_no}`;
+        // refresh balance + tx feed
+        await loadAccounts();
+      }catch(e){
+        payMsg.classList.add('error');
+        payMsg.textContent = e.message || 'Transfer failed';
+      }
+    });
+  }
+
+  // ---------- Open Account (inline) ----------
+  const openAccForm = document.getElementById('openAccForm');
+  const openAccFormMsg = document.getElementById('openAccFormMsg');
+  if(openAccForm){
+    openAccForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      openAccFormMsg.textContent = '';
+      openAccFormMsg.classList.remove('error');
+      try {
+        // Client-side age validation: must be 12+ years
+        if (dobInput && dobInput.value){
+          // Parse to ISO and compute age
+          const isoDob = toIsoFromDDMMYYYY(dobInput.value);
+          const [yy, mm, dd] = isoDob.split('-').map(Number);
+          const dobDt = new Date(Date.UTC(yy, mm-1, dd));
+          const today = new Date();
+          let age = today.getUTCFullYear() - dobDt.getUTCFullYear();
+          const mDiff = (today.getUTCMonth()) - (dobDt.getUTCMonth());
+          const dDiff = today.getUTCDate() - dobDt.getUTCDate();
+          if (mDiff < 0 || (mDiff === 0 && dDiff < 0)) age -= 1;
+          if (age < 12) {
+            throw new Error('Minimum age is 12 years to open an account');
+          }
+        }
+        // Convert DD/MM/YYYY -> YYYY-MM-DD before sending
+        if (dobInput && dobInput.value){
+          const isoDob = toIsoFromDDMMYYYY(dobInput.value);
+          const fd = new FormData(openAccForm);
+          fd.set('dob', isoDob);
+          const res = await fetch('/api/accounts/request', { method: 'POST', body: fd });
+          const ct = res.headers.get('content-type') || '';
+          let j;
+          if (ct.includes('application/json')) j = await res.json();
+          else { const text = await res.text(); throw new Error((text || '').split('\n').find(l => l.trim()) || 'Unexpected response'); }
+          if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+        } else {
+          throw new Error('Enter DOB as DD/MM/YYYY');
+        }
+
+        openAccFormMsg.textContent = '✅ Request submitted. Your application is under review.';
+        document.querySelector('.nav-btn[data-target="section-account"]').click();
+        const card = document.getElementById('noAccountCard');
+        if (card) card.querySelector('p').textContent = 'We have received your account opening request. YourBank will review and update your dashboard shortly.';
+      } catch (err) {
+        openAccFormMsg.classList.add('error');
+        openAccFormMsg.textContent = err.message || 'Something went wrong';
+      }
+    });
+  }
+
+  // =========================
+  // Loans UI + actions
+  // =========================
+  function ensureLoansLoaded(){
+    if (!__loansLoadedOnce) {
+      loadLoans();
+      __loansLoadedOnce = true;
+    }
+  }
+
+  function renderLoanRow(item){
+    const tr = document.createElement('tr');
+    const statusEl = statusPill(item.status);
+    const created = item.created_at ? fmtDate(item.created_at) : '-';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn ghost';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => {
+      // UI-only hide for now (non-destructive)
+      tr.remove();
+      loanMsg.classList.remove('error');
+      loanMsg.textContent = 'Removed from view (does not delete from bank records).';
+      // update count
+      const cnt = Math.max(0, Number(loanCount.textContent || 0) - 1);
+      loanCount.textContent = String(cnt);
+      if (loanBody.children.length === 0) loanEmpty.style.display = '';
+    });
+
+    tr.innerHTML = `
+      <td>${item.id}</td>
+      <td>${item.product}</td>
+      <td>${fmtCurrency(item.amount)}</td>
+      <td title="${item.purpose || ''}">${item.purpose || '-'}</td>
+      <td></td>
+      <td>${created}</td>
+      <td class="right"></td>
+    `;
+    tr.children[4].appendChild(statusEl);
+    tr.children[6].appendChild(removeBtn);
+    return tr;
+  }
+
+  async function loadLoans(){
+    loanMsg.textContent = '';
+    loanEmpty.style.display = 'none';
+    loanBody.innerHTML = '';
+    try{
+      const res = await jget('/api/loans/my');
+      const items = res.items || [];
+      if (items.length === 0) {
+        loanEmpty.style.display = '';
+        loanCount.textContent = '0';
+        loanLastStatus.textContent = '—';
+        loanLastStatus.className = 'status-pill';
+        return;
+      }
+      for (const it of items) loanBody.appendChild(renderLoanRow(it));
+      loanCount.textContent = String(items.length);
+      const last = items[0];
+      loanLastStatus.textContent = last.status;
+      loanLastStatus.className = 'status-pill ' + ((last.status==='APPROVED')?'ok':(last.status==='PENDING'?'':'warn'));
+    }catch(e){
+      loanMsg.classList.add('error');
+      loanMsg.textContent = e.message || 'Failed to load loan applications';
+      loanEmpty.style.display = '';
+    }
+  }
+
+  // Dialog open/close
+// Dialog open/close
+if (loanApplyBtn && loanDialog) {
+  loanApplyBtn.addEventListener('click', ()=>{
+    if (!window.__hasAccount) {
+      loanMsg.classList.add('error');
+      loanMsg.textContent = 'Please open an account before applying for a loan.';
+      return;
+    }
+    loanForm.reset();
+    loanFormMsg.textContent = '';
+
+    // === Autofill Name & Account No ===
+    const custNameField = document.getElementById('loanCustName');
+    const custAccField  = document.getElementById('loanAccNo');
+    if (custNameField) {
+      custNameField.value =
+        (activeAccount?.holder_name || '{{ (current_user.first_name or "") ~ " " ~ (current_user.last_name or "") }}').trim();
+    }
+    if (custAccField) {
+      custAccField.value = activeAccount?.account_no || '';
+    }
+
+    if (!loanDialog.open) loanDialog.showModal();
+    // Initialize ROI info based on current selection
+    if (loanProduct) updateLoanRoiInfo();
+  });
+}
+
+  if (loanClose && loanDialog) {
+    loanClose.addEventListener('click', ()=> loanDialog.close());
+  }
+
+  // -------- ROI info updater for loan product --------
+  function updateLoanRoiInfo(){
+    if (!loanRoiInfo || !loanRoiText) return;
+    const val = (loanProduct && loanProduct.value || '').toUpperCase();
+    let html = '';
+    if (val === 'PERSONAL') {
+      html = '<b>Personal Loan</b><br/>Quick approvals.<br/>Rate: 10% p.a. | Tenure: Up to 5 years';
+    } else 
+    if (val === 'HOME') {
+      html = '<b>Home Loan</b><br/>Make your dream home a reality.<br/>Rate: 8% p.a. | Tenure: Up to 30 years';
+    } else if (val === 'AUTO') {
+      html = '<b>Car Loan</b><br/>Quick approvals for your new car.<br/>Rate: 9.2% p.a. | Tenure: Up to 7 years';
+    } else if (val === 'EDUCATION') {
+      html = '<b>Education Loan</b><br/>Friendly repayment for studies.<br/>Rate: 9% p.a. | Tenure: Up to 15 years';
+    } else if (val === 'BUSINESS') {
+      html = '<b>Business Loan</b><br/>Power your business growth with ease.<br/>Rate: 10.5% p.a. | Tenure: Up to 10 years';
+    } else {
+      html = '';
+    }
+    if (html) {
+      loanRoiText.innerHTML = html;
+      loanRoiInfo.style.display = '';
+    } else {
+      loanRoiInfo.style.display = 'none';
+      loanRoiText.innerHTML = '';
+    }
+  }
+  if (loanProduct) loanProduct.addEventListener('change', updateLoanRoiInfo);
+
+  // Submit loan form
+  if (loanForm){
+    loanForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      loanFormMsg.textContent = '';
+      loanFormMsg.classList.remove('error');
+
+      try{
+        const fd = new FormData(loanForm);
+        // Convert to JSON + files multipart submission to backend /loans/apply
+        // We will send multipart directly (no JSON)
+        const res = await fetch('/api/loans/apply', {
+          method: 'POST',
+          body: fd
+        });
+        const ct = res.headers.get('content-type') || '';
+        let j;
+        if (ct.includes('application/json')) j = await res.json();
+        else { const text = await res.text(); throw new Error((text || '').split('\n').find(l => l.trim()) || 'Unexpected response'); }
+        if (!res.ok || j.ok === false) throw new Error(j.message || 'Request failed');
+
+        loanFormMsg.textContent = '✅ Loan application submitted';
+        // Refresh list
+        await loadLoans();
+        // Close dialog after a short tick for UX
+        setTimeout(()=> loanDialog.close(), 300);
+      }catch(err){
+        loanFormMsg.classList.add('error');
+        loanFormMsg.textContent = err.message || 'Submission failed';
+      }
+    });
+  }
+
+  if (loanRefreshBtn){
+    loanRefreshBtn.addEventListener('click', ()=> loadLoans());
+  }
+
+// Init
+loadAccounts().then(() => {
+  ensureLoansLoaded();
+  // load credit-card list on initial page load as well
+  if (typeof window.__loadCreditCards === 'function') {
+    window.__loadCreditCards();
+  } else {
+    // fallback: call function name directly if defined later
+    try { loadCreditCards && loadCreditCards(); } catch(e){ /* ignore */ }
+  }
+
+  // load debit-card list on initial page load as well
+  if (typeof window.__loadDebitCards === 'function') {
+    window.__loadDebitCards();
+  } else {
+    try { loadDebitCards && loadDebitCards(); } catch(e){ /* ignore */ }
+  }
+
+  // load SIP list on initial page load as well
+  if (typeof window.__loadSIPs === 'function') {
+    window.__loadSIPs();
+  } else {
+    try { loadSIPs && loadSIPs(); } catch(e){ /* ignore */ }
+  }
+});
+
+openByHash();
+
+
+});
+
+</script>
+
+  <!---------------------------------------------------
+  ----------------Scripts Code END --------------------
+  ---------------------------------------------------->
+  
+{% endblock %}

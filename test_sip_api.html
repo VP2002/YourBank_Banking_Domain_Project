@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SIP API Test</title>
+</head>
+<body>
+    <h1>SIP API Test</h1>
+    <button onclick="testSIPAPI()">Test SIP API</button>
+    <div id="result"></div>
+    
+    <script>
+    async function testSIPAPI() {
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = 'Testing...';
+        
+        try {
+            const response = await fetch('/api/ops/sip?status=PENDING');
+            const data = await response.json();
+            
+            resultDiv.innerHTML = `
+                <h3>Response Status: ${response.status}</h3>
+                <h3>Response Data:</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `<h3>Error:</h3><pre>${error.message}</pre>`;
+        }
+    }
+    </script>
+</body>
+</html>
+

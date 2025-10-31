@@ -1,0 +1,2342 @@
+{% extends "base.html" %}
+{% block title %}Employee Console{% endblock %}
+
+{% block content %}
+<div class="dash-grid">
+
+  <!-- ========== LEFT SIDEBAR ========== -->
+  <aside class="dash-sidebar">
+    <div class="profile-card">
+      <div class="avatar"><span>E</span></div>
+      <div class="profile-meta">
+        <div class="name">Employee</div>
+        <div class="tag">YourBank Staff</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-title">Overview</div>
+      <button class="nav-btn active" data-target="sec-overview">Overview</button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-title">Queues</div>
+      <button class="nav-btn" data-target="sec-requests">New Account Requests</button>
+      <button class="nav-btn" data-target="sec-loans">Loan Applications</button>
+      <button class="nav-btn" data-target="sec-cards-cc">Credit Card Applications</button>
+      <button class="nav-btn" data-target="sec-cards-dc">Debit Card Applications</button>
+      <button class="nav-btn" data-target="sec-sip">SIP Requests</button>
+      <button class="nav-btn" data-target="sec-sgb">SGB Requests</button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-title">Services</div>
+      <button class="nav-btn" data-target="sec-deposit">Accept Deposit</button>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN PANE ========== -->
+  <main class="dash-main">
+
+    <!-- ===== Overview ===== -->
+    <section id="sec-overview" class="dash-section show">
+      <div class="card">
+        <h3>Today at a glance</h3>
+        <div class="row two">
+          <div class="card"><h3>Pending Account Requests</h3><div id="ovr-acc-req">—</div></div>
+          <div class="card"><h3>Pending Loan Applications</h3><div id="ovr-loan-req">—</div></div>
+        </div>
+        <div class="row two" style="margin-top:8px">
+          <div class="card"><h3>Pending SIP Applications</h3><div id="ovr-sip-req">—</div></div>
+          <div class="card"><h3>Pending SGB Applications</h3><div id="ovr-sgb-req">—</div></div>
+        </div>
+        <div class="row two" style="margin-top:8px">
+          <div class="card"><h3>Deposits processed today</h3><div id="ovr-deposits">—</div></div>
+          <div class="card"><h3>Total Disbursals today</h3><div id="ovr-disbursals">—</div></div>
+        </div>
+        <button id="btn-ovr-refresh" class="btn-pill btn-outline" style="width:auto;margin-top:8px">Refresh Overview</button>
+      </div>
+    </section>
+
+    <!-- ===== New Account Requests ===== -->
+    <section id="sec-requests" class="dash-section">
+      <div class="card" style="max-width:960px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <h3>New Account Requests</h3>
+          <button id="req-refresh" class="btn-pill btn-outline" style="width:auto">Refresh</button>
+        </div>
+
+        <!-- Scoped styles for table + buttons -->
+        <style>
+          /* Pill buttons */
+          .btn-pill{
+            padding:8px 14px;border-radius:9999px;border:1px solid #4299e1;
+            background:#ffffff;color:#000000;cursor:pointer;
+            transition:background .15s,border-color .15s,transform .02s;
+          }
+          .btn-pill:hover{ background:#4299e1;color:#ffffff;border-color:#4299e1 }
+          .btn-pill:active{ transform:scale(.99) }
+          .btn-primary{ background:#4299e1;border-color:#4299e1;color:#ffffff }
+          .btn-primary:hover{ background:#3182ce;border-color:#3182ce }
+          .btn-outline{ }
+
+          /* Table */
+          #req-wrap{ overflow-x:hidden; }
+          #req-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+          #req-table col.col-id      { width: 10%; }
+          #req-table col.col-cust    { width: 22%; }
+          #req-table col.col-branch  { width: 14%; }
+          #req-table col.col-prod    { width: 16%; }
+          #req-table col.col-status  { width: 14%; }
+          #req-table col.col-action  { width: 24%; }
+
+          #req-table thead th,
+          #req-table tbody td{
+            padding:12px 10px;
+            border-bottom:1px dashed #1e252b;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+            vertical-align:middle;
+            text-align:center;
+          }
+          #req-table thead th{ color:var(--muted); font-weight:600; }
+
+          .action-group{ display:inline-flex; gap:8px; justify-content:center; }
+
+          /* Loans table */
+          #loan-wrap{ overflow-x:hidden; }
+          #loan-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+          #loan-table col.col-id     { width: 10%; }
+          #loan-table col.col-cust   { width: 24%; }
+          #loan-table col.col-amt    { width: 16%; }
+          #loan-table col.col-prod   { width: 16%; }
+          #loan-table col.col-status { width: 14%; }
+          #loan-table col.col-action { width: 20%; }
+          #loan-table thead th,
+          #loan-table tbody td{
+            padding:12px 10px;
+            border-bottom:1px dashed #1e252b;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+            vertical-align:middle;
+            text-align:center;
+          }
+          #loan-table thead th{ color:var(--muted); font-weight:600; }
+        </style>
+
+        <div id="req-msg" class="form-msg error" style="display:none"></div>
+
+        <div id="req-wrap">
+          <table id="req-table">
+            <colgroup>
+              <col class="col-id">
+              <col class="col-cust">
+              <col class="col-branch">
+              <col class="col-prod">
+              <col class="col-status">
+              <col class="col-action">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Customer</th>
+                <th>Branch</th>
+                <th>Product</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="req-body">
+              <tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="req-empty" style="display:none;color:var(--muted);padding:12px">No pending requests.</div>
+      </div>
+    </section>
+
+    <!-- ===== Loan Applications ===== -->
+    <section id="sec-loans" class="dash-section">
+      <div class="card" style="max-width:1080px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <h3>Loan Applications</h3>
+          <div>
+            <select id="loan-filter" class="btn-pill" style="width:auto;padding-right:30px">
+              <option value="PENDING" selected>Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="ALL">All</option>
+            </select>
+            <button id="loan-refresh" class="btn-pill btn-outline" style="width:auto">Refresh</button>
+          </div>
+        </div>
+
+        <div id="loan-msg" class="form-msg error" style="display:none"></div>
+
+        <div id="loan-wrap">
+          <table id="loan-table">
+            <colgroup>
+              <col class="col-id">
+              <col class="col-cust">
+              <col class="col-amt">
+              <col class="col-prod">
+              <col class="col-status">
+              <col class="col-action">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Product</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="loan-body">
+              <tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="loan-empty" style="display:none;color:var(--muted);padding:12px">No applications.</div>
+      </div>
+    </section>
+
+    <!-- Placeholders for other menus -->
+<!-- ================================================================
+     ======== CREDIT CARD FEATURE START (Employee Console) ==========
+     ================================================================
+     Replace existing placeholder with this entire block (HTML + Modal + JS)
+     It uses these server endpoints:
+       GET  /api/ops/credit_cards?status=...       (list)
+       POST /api/ops/credit_cards/<id>/approve     (approve)
+       POST /api/ops/credit_cards/<id>/decline     (decline)
+     Document previews use: /api/employee/file/kyc/<filename>
+   ================================================================= -->
+
+   <section id="sec-cards-cc" class="dash-section">
+    <div class="card" style="max-width:1080px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h3>Credit Card Applications</h3>
+        <div>
+          <select id="cc-filter" class="btn-pill" style="width:auto;padding-right:30px">
+            <option value="PENDING" selected>Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="ALL">All</option>
+          </select>
+          <button id="cc-refresh" class="btn-pill btn-outline" style="width:auto">Refresh</button>
+        </div>
+      </div>
+  
+      <div id="cc-msg" class="form-msg error" style="display:none"></div>
+  
+      <div id="cc-wrap">
+        <table id="cc-table" style="width:100%; border-collapse:collapse; table-layout:fixed;">
+          <colgroup>
+            <col style="width:10%">
+            <col style="width:24%">
+            <col style="width:18%">
+            <col style="width:18%">
+            <col style="width:14%">
+            <col style="width:16%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th style="text-align:center; color:var(--muted); padding:10px">ID</th>
+              <th style="text-align:left; color:var(--muted); padding:10px">Customer</th>
+              <th style="text-align:left; color:var(--muted); padding:10px">Card Type</th>
+              <th style="text-align:right; color:var(--muted); padding:10px">Preferred Limit</th>
+              <th style="text-align:center; color:var(--muted); padding:10px">Status</th>
+              <th style="text-align:center; color:var(--muted); padding:10px">Action</th>
+            </tr>
+          </thead>
+          <tbody id="cc-body">
+            <tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+  
+      <div id="cc-empty" style="display:none;color:var(--muted);padding:12px">No applications.</div>
+    </div>
+  </section>
+  
+  <!-- ----------------- CREDIT CARD DETAIL / ACTIONS MODAL ----------------- -->
+  <div id="cc-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:9999;">
+    <div style="width:720px; max-width:92vw; background:#ffffff; color:#000000; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line);">
+        <div style="font-weight:700; font-size:16px">Credit Card Application Details</div>
+        <button id="cc-close" class="btn-pill btn-outline" style="width:auto">Close</button>
+      </div>
+  
+      <div style="padding:16px">
+        <div id="cc-error" class="form-msg error" style="display:none"></div>
+  
+        <div class="row two" style="margin-bottom:8px; gap:12px; display:grid; grid-template-columns: repeat(2, 1fr);">
+          <div><div class="lbl">Application ID</div><div id="c-id" style="font-weight:600;"></div></div>
+          <div><div class="lbl">Status</div><div id="c-status" style="font-weight:600;"></div></div>
+          <div><div class="lbl">Customer</div><div id="c-customer" style="font-weight:600;"></div></div>
+          <div><div class="lbl">Card Type</div><div id="c-type" style="font-weight:600;"></div></div>
+          <div><div class="lbl">Limit</div><div id="c-limit" style="font-weight:600;"></div></div>
+          <div><div class="lbl">Created</div><div id="c-created" style="font-weight:600;"></div></div>
+        </div>
+  
+        <div class="lbl" style="margin-top:6px">Documents</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+          <a id="btn-cc-pan" class="btn-pill btn-outline" target="_blank" style="display:none;width:auto">Preview PAN</a>
+          <a id="btn-cc-aadhaar" class="btn-pill btn-outline" target="_blank" style="display:none;width:auto">Preview Aadhaar</a>
+        </div>
+  
+        <div class="inner-card" style="margin-bottom:12px">
+          <div style="font-weight:600;margin-bottom:8px">Approve / Decline</div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="cc-approve" class="btn-pill btn-primary" style="width:auto">Approve</button>
+            <input id="cc-remark" type="text" class="field" placeholder="Reason to decline (required)"
+                  style="flex:1; min-width:220px; padding:10px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; color:#000000">
+            <button id="cc-decline" class="btn-pill" style="width:auto;background:#dc3545;border-color:#dc3545;color:#ffffff">Decline</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ================================================================
+       ======== CREDIT CARD FEATURE: JAVASCRIPT (Employee Console) ======
+       Place inside the page <script> area (near other employee JS).
+       Uses helpers already present on page: safeJson(), loadOverview()
+     ================================================================= -->
+  <script>
+  /* ----------------------------------------------------------------
+     CREDIT CARDS — DOM REFS, EVENTS, UTILITIES
+     ---------------------------------------------------------------- */
+  const ccBody   = document.getElementById('cc-body');
+  const ccEmpty  = document.getElementById('cc-empty');
+  const ccMsg    = document.getElementById('cc-msg');
+  const ccFilter = document.getElementById('cc-filter');
+  const ccRefreshBtn = document.getElementById('cc-refresh');
+  
+  if (ccRefreshBtn) ccRefreshBtn.addEventListener('click', loadCreditCards);
+  if (ccFilter) ccFilter.addEventListener('change', loadCreditCards);
+  
+  /* ----------------------------------------------------------------
+     CREDIT CARDS — Load list (uses /api/ops/credit_cards?status=...)
+     - populates table rows with a "View" button (class .cc-view)
+     ---------------------------------------------------------------- */
+  async function loadCreditCards(){
+    if (!ccBody) return;
+    ccMsg.style.display = 'none';
+    ccBody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>';
+    ccEmpty.style.display = 'none';
+    const status = (ccFilter && ccFilter.value ? ccFilter.value : 'PENDING').toUpperCase();
+  
+    try {
+      const res = await fetch(`/api/ops/credit_cards?status=${encodeURIComponent(status)}`);
+      const data = await safeJson(res);
+      if (!res.ok || data.ok === false) {
+        ccBody.innerHTML = '';
+        ccMsg.textContent = data.message || 'Failed to load';
+        ccMsg.style.display = '';
+        return;
+      }
+  
+      const items = data.items || [];
+      if (items.length === 0) {
+        ccBody.innerHTML = '';
+        ccEmpty.style.display = '';
+        return;
+      }
+  
+      ccBody.innerHTML = '';
+      for (const it of items) {
+        const tr = document.createElement('tr');
+        tr.style.verticalAlign = 'middle';
+        tr.innerHTML = `
+          <td style="text-align:center;padding:10px">${it.id}</td>
+          <td style="padding:10px; text-align:left">${it.customer_name || it.customer_id || '-'}</td>
+          <td style="padding:10px; text-align:left">${it.card_type || '-'}</td>
+          <td style="padding:10px; text-align:right">₹ ${Number(it.preferred_limit||0).toFixed(2)}</td>
+          <td style="padding:10px; text-align:center">${it.status || '-'}</td>
+          <td style="padding:10px; text-align:center"><button class="cc-view btn-pill btn-outline" data-id="${it.id}">View</button></td>
+        `;
+        ccBody.appendChild(tr);
+      }
+    } catch (err) {
+      ccBody.innerHTML = '';
+      ccMsg.textContent = 'Network error';
+      ccMsg.style.display = '';
+      console.error('loadCreditCards error', err);
+    }
+  }
+  
+  /* ----------------------------------------------------------------
+     CREDIT CARDS — Modal: refs + show/hide helpers
+     ---------------------------------------------------------------- */
+  const ccModal   = document.getElementById('cc-modal');
+  const ccClose   = document.getElementById('cc-close');
+  const cErr      = document.getElementById('cc-error');
+  const cId       = document.getElementById('c-id');
+  const cStatus   = document.getElementById('c-status');
+  const cCustomer = document.getElementById('c-customer');
+  const cType     = document.getElementById('c-type');
+  const cLimit    = document.getElementById('c-limit');
+  const cCreated  = document.getElementById('c-created');
+  const ccApprove = document.getElementById('cc-approve');
+  const ccDecline = document.getElementById('cc-decline');
+  const ccRemark  = document.getElementById('cc-remark');
+  const btnCcPan  = document.getElementById('btn-cc-pan');
+  const btnCcAad  = document.getElementById('btn-cc-aadhaar');
+  
+  function showCcModal(){ if (ccModal) ccModal.style.display = 'flex'; }
+  function hideCcModal(){ if (ccModal) ccModal.style.display = 'none'; }
+  if (ccClose) ccClose.addEventListener('click', hideCcModal);
+  if (ccModal) ccModal.addEventListener('click', e => { if (e.target === ccModal) hideCcModal(); });
+  
+  /* ----------------------------------------------------------------
+     CREDIT CARDS — Helper to attach previews (KYC files saved under KYC root)
+     file path stored by model is relative name (we use basename)
+     preview endpoint: /api/employee/file/kyc/<filename>
+     ---------------------------------------------------------------- */
+  function setCcDoc(anchor, filename){
+    if (!anchor) return;
+    const f = (filename || '').split('/').pop();
+    if (f) {
+      anchor.href = `/api/employee/file/kyc/${encodeURIComponent(f)}`;
+      anchor.style.display = '';
+    } else {
+      anchor.style.display = 'none';
+      anchor.removeAttribute('href');
+    }
+  }
+  
+  /* ----------------------------------------------------------------
+     CREDIT CARDS — Open single application (no single-get API present)
+     Implementation: fetch list with status=ALL and find the item by id.
+     This keeps UI responsive and avoids adding new backend endpoints.
+     ---------------------------------------------------------------- */
+  async function openCreditCard(id){
+    if (!cId) return;
+    cErr.style.display = 'none';
+    cId.textContent = id;
+    cStatus.textContent = cCustomer.textContent = cType.textContent = cLimit.textContent = cCreated.textContent = '';
+    if (ccRemark) ccRemark.value = '';
+    setCcDoc(btnCcPan, '');
+    setCcDoc(btnCcAad, '');
+  
+    try {
+      // fetch all (small batch) to find item details
+      const res = await fetch('/api/ops/credit_cards?status=ALL');
+      const data = await safeJson(res);
+      if (!res.ok || data.ok === false) {
+        cErr.textContent = data.message || 'Failed to load details';
+        cErr.style.display = '';
+        showCcModal();
+        return;
+      }
+  
+      const items = data.items || [];
+      const it = items.find(x => String(x.id) === String(id));
+      if (!it) {
+        cErr.textContent = 'Application not found';
+        cErr.style.display = '';
+        showCcModal();
+        return;
+      }
+  
+      // populate fields
+      cStatus.textContent = it.status || '';
+      cCustomer.textContent = it.customer_name || it.customer_id || '';
+      cType.textContent = it.card_type || '';
+      cLimit.textContent = '₹ ' + Number(it.preferred_limit || 0).toFixed(2);
+      cCreated.textContent = it.created_at || '';
+  
+      // try to attach document previews (fields from model: pan_file_path, aadhaar_file_path)
+      setCcDoc(btnCcPan, it.pan_file_path || it.pan_file || '');
+      setCcDoc(btnCcAad, it.aadhaar_file_path || it.aadhaar_file || '');
+  
+    } catch (err) {
+      console.error('openCreditCard error', err);
+      cErr.textContent = 'Network error';
+      cErr.style.display = '';
+    }
+  
+    // Approve action
+    if (ccApprove) {
+      ccApprove.onclick = async () => {
+        ccApprove.disabled = true;
+        try {
+          const r = await fetch(`/api/ops/credit_cards/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+          const d = await safeJson(r);
+          if (r.ok && d.ok) {
+            hideCcModal();
+            await loadCreditCards();
+            if (typeof loadOverview === 'function') loadOverview();
+          } else {
+            alert(d.message || 'Approve failed');
+          }
+        } catch (e) {
+          alert('Network error');
+        } finally {
+          ccApprove.disabled = false;
+        }
+      };
+    }
+  
+    // Decline action
+    if (ccDecline) {
+      ccDecline.onclick = async () => {
+        const remark = (ccRemark && ccRemark.value || '').trim();
+        if (!remark) {
+          if (ccRemark) ccRemark.focus();
+          return;
+        }
+        ccDecline.disabled = true;
+        try {
+          const r = await fetch(`/api/ops/credit_cards/${encodeURIComponent(id)}/decline`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ remark })
+          });
+          const d = await safeJson(r);
+          if (r.ok && d.ok) {
+            hideCcModal();
+            await loadCreditCards();
+            if (typeof loadOverview === 'function') loadOverview();
+          } else {
+            alert(d.message || 'Decline failed');
+          }
+        } catch (e) {
+          alert('Network error');
+        } finally {
+          ccDecline.disabled = false;
+        }
+      };
+    }
+  
+    showCcModal();
+  }
+  
+  /* ----------------------------------------------------------------
+     CREDIT CARDS — Row click delegation: open modal on "View"
+     ---------------------------------------------------------------- */
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && t.classList && t.classList.contains('cc-view')) {
+      const id = t.dataset && t.dataset.id;
+      if (id) openCreditCard(id);
+    }
+  });
+  
+  /* ----------------------------------------------------------------
+     CREDIT CARDS — Auto-init (load when section displayed)
+     You likely already call loadOverview() on page init; call loadCreditCards()
+     after the employee page has finished initialization so data appears.
+     ---------------------------------------------------------------- */
+  if (typeof window !== 'undefined') {
+    // If the Employee page shows this section by default, load once.
+    // Otherwise the nav switch in your page triggers loadRequests/loadLoans etc.
+    // We'll attempt a safe initial load so the table shows when user opens the tab.
+    try { loadCreditCards(); } catch(e) { /* ignore */ }
+  }
+  
+  /* ================================================================
+     ======== CREDIT CARD FEATURE END (Employee Console) =============
+     ================================================================ */
+  </script>
+  
+<!-- ========================= DEBIT CARD FEATURE START (Employee Console) =========================
+     This block provides:
+       - Debit Card Applications list (server: GET /api/ops/debit_cards?status=...)
+       - Debit Card Application detail modal (preview PAN/Aadhaar)
+       - Approve endpoint POST /api/ops/debit_cards/<id>/approve
+       - Decline endpoint POST /api/ops/debit_cards/<id>/decline
+     Insert this block AFTER the credit-card employee section (or replace any existing debit-card placeholder).
+     ============================================================================================== -->
+     <section id="sec-cards-dc" class="dash-section">
+      <div class="card" style="max-width:1080px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <h3>Debit Card Applications</h3>
+          <div>
+            <select id="dc-filter" class="btn-pill" style="width:auto;padding-right:30px">
+              <option value="PENDING" selected>Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="ALL">All</option>
+            </select>
+            <button id="dc-refresh" class="btn-pill btn-outline" style="width:auto">Refresh</button>
+          </div>
+        </div>
+    
+        <div id="dc-msg" class="form-msg error" style="display:none"></div>
+    
+        <div id="dc-wrap">
+          <table id="dc-table" style="width:100%; border-collapse:collapse; table-layout:fixed;">
+            <colgroup>
+              <col style="width:10%">
+              <col style="width:24%">
+              <col style="width:18%">
+              <col style="width:18%">
+              <col style="width:14%">
+              <col style="width:16%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="text-align:center; color:var(--muted); padding:10px">ID</th>
+                <th style="text-align:left; color:var(--muted); padding:10px">Customer</th>
+                <th style="text-align:left; color:var(--muted); padding:10px">Card Type</th>
+                <th style="text-align:right; color:var(--muted); padding:10px">Preferred Limit</th>
+                <th style="text-align:center; color:var(--muted); padding:10px">Status</th>
+                <th style="text-align:center; color:var(--muted); padding:10px">Action</th>
+              </tr>
+            </thead>
+            <tbody id="dc-body">
+              <tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+    
+        <div id="dc-empty" style="display:none;color:var(--muted);padding:12px">No applications.</div>
+      </div>
+    </section>
+    
+    <!-- Detail / Actions Modal -->
+    <div id="dc-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:9999;">
+      <div style="width:720px; max-width:92vw; background:#ffffff; color:#000000; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line);">
+          <div style="font-weight:700; font-size:16px">Debit Card Application Details</div>
+          <button id="dc-close" class="btn-pill btn-outline" style="width:auto">Close</button>
+        </div>
+    
+        <div style="padding:16px">
+          <div id="dc-error" class="form-msg error" style="display:none"></div>
+    
+          <div class="row two" style="margin-bottom:8px; gap:12px; display:grid; grid-template-columns: repeat(2, 1fr);">
+            <div><div class="lbl">Application ID</div><div id="dc-id" style="font-weight:600;"></div></div>
+            <div><div class="lbl">Status</div><div id="dc-status" style="font-weight:600;"></div></div>
+            <div><div class="lbl">Customer</div><div id="dc-customer" style="font-weight:600;"></div></div>
+            <div><div class="lbl">Card Type</div><div id="dc-type" style="font-weight:600;"></div></div>
+            <div><div class="lbl">Limit</div><div id="dc-limit" style="font-weight:600;"></div></div>
+            <div><div class="lbl">Created</div><div id="dc-created" style="font-weight:600;"></div></div>
+          </div>
+    
+          <div class="lbl" style="margin-top:6px">Documents</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            <a id="btn-dc-pan" class="btn-pill btn-outline" target="_blank" style="display:none;width:auto">Preview PAN</a>
+            <a id="btn-dc-aadhaar" class="btn-pill btn-outline" target="_blank" style="display:none;width:auto">Preview Aadhaar</a>
+          </div>
+    
+          <div class="inner-card" style="margin-bottom:12px">
+            <div style="font-weight:600;margin-bottom:8px">Approve / Decline</div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button id="dc-approve" class="btn-pill btn-primary" style="width:auto">Approve</button>
+              <input id="dc-remark" type="text" class="field" placeholder="Reason to decline (required)"
+                    style="flex:1; min-width:220px; padding:10px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; color:#000000">
+              <button id="dc-decline" class="btn-pill" style="width:auto;background:#dc3545;border-color:#dc3545;color:#ffffff">Decline</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ==================================================================================================
+         DEBIT CARD: Styles (minimal) - these rely on your existing employee CSS for .btn-pill/.form-msg/.inner-card
+         ================================================================================================== -->
+    <style>
+      @media (max-width:900px){
+        #dc-table thead th { font-size:13px; }
+        #dc-table td { font-size:13px; padding:8px; }
+      }
+      #dc-modal .inner-card { border:1px solid #e2e8f0; background:#f8f9fa; padding:12px; border-radius:10px; }
+    </style>
+    
+    <!-- ==================================================================================================
+         DEBIT CARD: JavaScript - behaviour mirrors the credit-card admin functions.
+         IMPORTANT:
+           - Uses endpoints:
+               GET  /api/ops/debit_cards?status=...
+               POST /api/ops/debit_cards/<id>/approve
+               POST /api/ops/debit_cards/<id>/decline
+             (and document previews at /api/employee/file/kyc/<filename>)
+           - If your backend uses other endpoints / naming, change the fetch URLs accordingly.
+         ================================================================================================== -->
+    <script>
+    /* --- small safeJson fallback if page doesn't provide one --- */
+    if (typeof safeJson !== 'function') {
+      window.safeJson = async function(res){
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) return await res.json();
+        const t = await res.text();
+        return { ok:false, message: (t||'').split('\n').find(l=>l.trim()) || 'Unexpected response' };
+      };
+    }
+    
+    /* DEBIT card admin functionality */
+    (function(){
+      // Refs
+      const dcBody   = document.getElementById('dc-body');
+      const dcEmpty  = document.getElementById('dc-empty');
+      const dcMsg    = document.getElementById('dc-msg');
+      const dcFilter = document.getElementById('dc-filter');
+      const dcRefreshBtn = document.getElementById('dc-refresh');
+    
+      const dcModal   = document.getElementById('dc-modal');
+      const dcClose   = document.getElementById('dc-close');
+      const dErr      = document.getElementById('dc-error');
+    
+      const dId       = document.getElementById('dc-id');
+      const dStatus   = document.getElementById('dc-status');
+      const dCustomer = document.getElementById('dc-customer');
+      const dType     = document.getElementById('dc-type');
+      const dLimit    = document.getElementById('dc-limit');
+      const dCreated  = document.getElementById('dc-created');
+    
+      const dcApprove = document.getElementById('dc-approve');
+      const dcDecline = document.getElementById('dc-decline');
+      const dcRemark  = document.getElementById('dc-remark');
+      const btnDcPan  = document.getElementById('btn-dc-pan');
+      const btnDcAad  = document.getElementById('btn-dc-aadhaar');
+    
+      // Attach events
+      if (dcRefreshBtn) dcRefreshBtn.addEventListener('click', loadDebitCards);
+      if (dcFilter) dcFilter.addEventListener('change', loadDebitCards);
+      if (dcClose) dcClose.addEventListener('click', ()=> { if(dcModal) dcModal.style.display='none'; });
+      if (dcModal) dcModal.addEventListener('click', e => { if (e.target === dcModal) dcModal.style.display = 'none'; });
+    
+      function setDcDoc(anchor, filename){
+        if (!anchor) return;
+        const f = (filename || '').split('/').pop();
+        if (f) { anchor.href = `/api/employee/file/kyc/${encodeURIComponent(f)}`; anchor.style.display = ''; }
+        else { anchor.style.display = 'none'; anchor.removeAttribute('href'); }
+      }
+    
+      async function loadDebitCards(){
+        if (!dcBody) return;
+        if (dcMsg) { dcMsg.style.display = 'none'; dcMsg.textContent = ''; }
+        dcBody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>';
+        if (dcEmpty) dcEmpty.style.display = 'none';
+        const status = (dcFilter && dcFilter.value ? dcFilter.value : 'PENDING').toUpperCase();
+        try {
+          const res = await fetch(`/api/ops/debit_cards?status=${encodeURIComponent(status)}`);
+          const data = await safeJson(res);
+          if (!res.ok || data.ok === false) {
+            dcBody.innerHTML = '';
+            if (dcMsg) { dcMsg.textContent = data.message || 'Failed to load'; dcMsg.style.display = ''; }
+            return;
+          }
+          const items = data.items || [];
+          if (items.length === 0) { dcBody.innerHTML = ''; if (dcEmpty) dcEmpty.style.display = ''; return; }
+    
+          dcBody.innerHTML = '';
+          for (const it of items) {
+            const tr = document.createElement('tr');
+            tr.style.verticalAlign = 'middle';
+            tr.innerHTML = `
+              <td style="text-align:center;padding:10px">${it.id}</td>
+              <td style="padding:10px; text-align:left">${it.customer_name || it.customer_id || '-'}</td>
+              <td style="padding:10px; text-align:left">${it.card_type || '-'}</td>
+              <td style="padding:10px; text-align:right">₹ ${Number(it.preferred_limit||0).toFixed(2)}</td>
+              <td style="padding:10px; text-align:center">${it.status || '-'}</td>
+              <td style="padding:10px; text-align:center"><button class="dc-view btn-pill btn-outline" data-id="${it.id}">View</button></td>
+            `;
+            dcBody.appendChild(tr);
+          }
+        } catch (err) {
+          console.error('loadDebitCards error', err);
+          dcBody.innerHTML = '';
+          if (dcMsg) { dcMsg.textContent = 'Network error'; dcMsg.style.display = ''; }
+        }
+      }
+    
+      async function openDebitCard(id){
+        if (!dId) return;
+        if (dErr) { dErr.style.display = 'none'; dErr.textContent = ''; }
+        dId.textContent = id;
+        dStatus.textContent = dCustomer.textContent = dType.textContent = dLimit.textContent = dCreated.textContent = '';
+        if (dcRemark) dcRemark.value = '';
+        setDcDoc(btnDcPan, ''); setDcDoc(btnDcAad, '');
+    
+        try {
+          const res = await fetch('/api/ops/debit_cards?status=ALL');
+          const data = await safeJson(res);
+          if (!res.ok || data.ok === false) {
+            if (dErr) { dErr.textContent = data.message || 'Failed to load details'; dErr.style.display = ''; }
+            if (dcModal) dcModal.style.display = 'flex';
+            return;
+          }
+          const items = data.items || [];
+          const it = items.find(x => String(x.id) === String(id));
+          if (!it) {
+            if (dErr) { dErr.textContent = 'Application not found'; dErr.style.display = ''; }
+            if (dcModal) dcModal.style.display = 'flex';
+            return;
+          }
+    
+          dStatus.textContent = it.status || '';
+          dCustomer.textContent = it.customer_name || it.customer_id || '';
+          dType.textContent = it.card_type || '';
+          dLimit.textContent = '₹ ' + Number(it.preferred_limit || 0).toFixed(2);
+          dCreated.textContent = it.created_at || '';
+    
+          setDcDoc(btnDcPan, it.pan_file_path || it.pan_file || '');
+          setDcDoc(btnDcAad, it.aadhaar_file_path || it.aadhaar_file || '');
+        } catch (err) {
+          console.error('openDebitCard error', err);
+          if (dErr) { dErr.textContent = 'Network error'; dErr.style.display = ''; }
+        }
+    
+        // Approve handler
+        if (dcApprove) {
+          dcApprove.onclick = async () => {
+            dcApprove.disabled = true;
+            try {
+              const r = await fetch(`/api/ops/debit_cards/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+              const d = await safeJson(r);
+              if (r.ok && d.ok) {
+                if (dcModal) dcModal.style.display = 'none';
+                await loadDebitCards();
+                if (typeof loadOverview === 'function') loadOverview();
+              } else {
+                alert(d.message || 'Approve failed');
+              }
+            } catch (e) { alert('Network error'); }
+            finally { dcApprove.disabled = false; }
+          };
+        }
+    
+        // Decline handler
+        if (dcDecline) {
+          dcDecline.onclick = async () => {
+            const remark = (dcRemark && dcRemark.value || '').trim();
+            if (!remark) { if (dcRemark) dcRemark.focus(); return; }
+            dcDecline.disabled = true;
+            try {
+              const r = await fetch(`/api/ops/debit_cards/${encodeURIComponent(id)}/decline`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ remark })
+              });
+              const d = await safeJson(r);
+              if (r.ok && d.ok) {
+                if (dcModal) dcModal.style.display = 'none';
+                await loadDebitCards();
+                if (typeof loadOverview === 'function') loadOverview();
+              } else {
+                alert(d.message || 'Decline failed');
+              }
+            } catch (e) { alert('Network error'); }
+            finally { dcDecline.disabled = false; }
+          };
+        }
+    
+        if (dcModal) dcModal.style.display = 'flex';
+      }
+    
+      // Delegated click for view buttons
+      document.addEventListener('click', (e) => {
+        const t = e.target;
+        if (t && t.classList && t.classList.contains('dc-view')) {
+          const id = t.dataset && t.dataset.id;
+          if (id) openDebitCard(id);
+        }
+      });
+    
+      // Expose loader
+      window.loadDebitCards = loadDebitCards;
+    
+      // Try initial load (safe)
+      try { loadDebitCards(); } catch(e){ /* ignore */ }
+    })();
+    </script>
+    
+    <!-- ========================= DEBIT CARD FEATURE END (Employee Console) ========================= -->
+    
+    <!-- ========================= SIP FEATURE START (Employee Console) ========================= -->
+    <script>
+    (function(){
+      // DOM refs
+      const sipRefreshBtn = document.getElementById('sipRefreshBtn');
+      const sipFilter     = document.getElementById('sipStatusFilter');
+      const sipBody       = document.getElementById('sipBody');
+      const sipEmpty      = document.getElementById('sipEmpty');
+      const sipMsg        = document.getElementById('sipMsg');
+      const sipModal      = document.getElementById('sipModal');
+      const sipClose      = document.getElementById('sipClose');
+    
+      // Attach events
+      if (sipRefreshBtn) sipRefreshBtn.addEventListener('click', simpleLoadSIPs);
+      if (sipFilter) sipFilter.addEventListener('change', simpleLoadSIPs);
+      
+      // SGB event listeners
+      const sgbRefreshBtn = document.getElementById('sgbRefreshBtn');
+      const sgbFilter = document.getElementById('sgbStatusFilter');
+      if (sgbRefreshBtn) sgbRefreshBtn.addEventListener('click', window.simpleLoadSGBs);
+      if (sgbFilter) sgbFilter.addEventListener('change', window.simpleLoadSGBs);
+      
+      console.log('SIP events attached:', {
+        refreshBtn: !!sipRefreshBtn,
+        filter: !!sipFilter
+      });
+      
+      // Modal close events
+      const sipClose = document.getElementById('sipClose');
+      const sipCloseBtn = document.getElementById('sipCloseBtn');
+      const sipModal = document.getElementById('sipModal');
+      
+      function closeSIPModal() {
+        if (sipModal) sipModal.style.display = 'none';
+      }
+      
+      if (sipClose) sipClose.addEventListener('click', closeSIPModal);
+      if (sipCloseBtn) sipCloseBtn.addEventListener('click', closeSIPModal);
+      if (sipModal) sipModal.addEventListener('click', e => { 
+        if (e.target === sipModal) closeSIPModal(); 
+      });
+    
+      async function loadSIPs(){
+        if (!sipBody) return;
+        if (sipMsg) { sipMsg.style.display = 'none'; sipMsg.textContent = ''; }
+        sipBody.innerHTML = '<tr><td colspan="9" style="padding:12px;color:var(--muted)">Loading…</td></tr>';
+        if (sipEmpty) sipEmpty.style.display = 'none';
+        const status = (sipFilter && sipFilter.value ? sipFilter.value : 'PENDING').toUpperCase();
+        console.log('Loading SIPs with status:', status);
+        try {
+          const r = await fetch(`/api/ops/sip?status=${encodeURIComponent(status)}`);
+          console.log('SIP API response status:', r.status);
+          const d = await safeJson(r);
+          console.log('SIP API response data:', d);
+          sipBody.innerHTML = '';
+          if (r.ok && d.ok && Array.isArray(d.items)) {
+            console.log('SIP items found:', d.items.length);
+            if (d.items.length === 0) {
+              if (sipEmpty) sipEmpty.style.display = '';
+            } else {
+              for (const it of d.items) {
+                const tr = document.createElement('tr');
+                const created = it.created_at ? new Date(it.created_at).toLocaleDateString() : '-';
+                tr.innerHTML = `
+                  <td>${it.id}</td>
+                  <td>${it.customer_name || '-'}</td>
+                  <td>${it.fund_name || '-'}</td>
+                  <td>${it.fund_type || '-'}</td>
+                  <td>₹ ${Number(it.monthly_amount || 0).toFixed(2)}</td>
+                  <td>${it.tenure_months || 0} months</td>
+                  <td style="padding:10px; text-align:center"><span class="status-pill ${it.status === 'APPROVED' ? 'ok' : (it.status === 'PENDING' ? '' : 'warn')}">${it.status || 'PENDING'}</span></td>
+                  <td>${created}</td>
+                  <td style="padding:10px; text-align:center"><button class="sip-view btn-pill btn-outline" data-id="${it.id}">View</button></td>
+                `;
+                sipBody.appendChild(tr);
+              }
+            }
+          } else {
+            console.log('SIP API error or no items:', { ok: r.ok, data_ok: d.ok, items: d.items });
+            if (sipMsg) { sipMsg.textContent = d.message || 'Failed to load SIP applications'; sipMsg.style.display = ''; }
+          }
+        } catch (err) {
+          console.error('loadSIPs error', err);
+          sipBody.innerHTML = '';
+          if (sipMsg) { sipMsg.textContent = 'Network error'; sipMsg.style.display = ''; }
+        }
+      }
+    
+    
+  // Event delegation for view buttons
+  document.addEventListener('click', (e) => {
+    console.log('Click detected:', e.target);
+    if (e.target && e.target.classList.contains('sip-view')) {
+      const id = e.target.getAttribute('data-id');
+      console.log('SIP view button clicked, ID:', id);
+      if (id) {
+        window.openSIP(id);
+      }
+    }
+  });
+    
+      // Test function for debugging
+      window.testSIPAPI = async function() {
+        console.log('=== SIP API Test ===');
+        try {
+          const response = await fetch('/api/ops/sip?status=PENDING');
+          console.log('Response status:', response.status);
+          console.log('Response headers:', [...response.headers.entries()]);
+          
+          const text = await response.text();
+          console.log('Response text:', text);
+          
+          try {
+            const data = JSON.parse(text);
+            console.log('Parsed JSON:', data);
+            alert(`API Test Result:\nStatus: ${response.status}\nItems: ${data.items ? data.items.length : 'No items property'}\nCheck console for details.`);
+          } catch (e) {
+            console.log('Not JSON response:', e);
+            alert(`API Test Result:\nStatus: ${response.status}\nResponse is not JSON (likely HTML login page)\nCheck console for details.`);
+          }
+        } catch (error) {
+          console.error('Test error:', error);
+          alert(`Test Error: ${error.message}`);
+        }
+      };
+
+      // Debug function to check DOM elements
+      window.debugSIP = function() {
+        console.log('=== SIP DOM Debug ===');
+        console.log('sipBody element:', document.getElementById('sipBody'));
+        console.log('sipEmpty element:', document.getElementById('sipEmpty'));
+        console.log('sipMsg element:', document.getElementById('sipMsg'));
+        console.log('sipFilter element:', document.getElementById('sipStatusFilter'));
+        console.log('sipRefreshBtn element:', document.getElementById('sipRefreshBtn'));
+        alert('DOM elements checked - see console for details');
+      };
+
+      // Test dropdown function
+      window.testSIPDropdown = function() {
+        const filter = document.getElementById('sipStatusFilter');
+        console.log('Dropdown element:', filter);
+        console.log('Current value:', filter ? filter.value : 'not found');
+        if (filter) {
+          alert('Dropdown found! Current value: ' + filter.value);
+        } else {
+          alert('Dropdown not found!');
+        }
+      };
+
+      // Expose functions globally
+      window.loadSIPs = loadSIPs;
+    
+      // Try initial load (safe)
+      try { loadSIPs(); } catch(e){ /* ignore */ }
+    })();
+    </script>
+    
+    <!-- ========================= SIP FEATURE END (Employee Console) ========================= -->
+    
+
+
+
+    <!-- ===== SIP Requests ===== -->
+    <section id="sec-sip" class="dash-section">
+      <div class="card">
+        <div class="card-head">
+          <h3>SIP Investment Requests</h3>
+          <div>
+            <button type="button" class="btn ghost" id="sipRefreshBtn">Refresh</button>
+            <select id="sipStatusFilter" class="sel">
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="ALL">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="sip-wrap">
+          <table id="sip-table" style="width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed;">
+            <colgroup>
+              <col style="width:8%">
+              <col style="width:15%">
+              <col style="width:20%">
+              <col style="width:10%">
+              <col style="width:12%">
+              <col style="width:10%">
+              <col style="width:10%">
+              <col style="width:10%">
+              <col style="width:15%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">ID</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Customer</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Fund Name</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Type</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Monthly Amount</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Tenure</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Status</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Submitted</th>
+                <th class="right" style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sipBody"></tbody>
+          </table>
+        </div>
+        <div id="sipEmpty" class="muted" style="display:none">No SIP applications found.</div>
+        <div id="sipMsg" class="form-msg"></div>
+      </div>
+    </section>
+
+    <!-- SIP Details Modal -->
+    <div id="sipModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:9999;">
+      <div class="modal-content" style="width:760px; max-width:92vw; background:#ffffff; color:#000000; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+        <div class="modal-header">
+          <h3>SIP Application Details</h3>
+          <button type="button" class="close-btn" id="sipClose">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:16px">
+          <div id="sipDetails">
+            <div class="row two">
+              <div class="field">
+                <label>Application ID:</label>
+                <span id="sipDetailId">-</span>
+              </div>
+              <div class="field">
+                <label>Customer Name:</label>
+                <span id="sipDetailCustomer">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Fund Name:</label>
+                <span id="sipDetailFund">-</span>
+              </div>
+              <div class="field">
+                <label>Fund Type:</label>
+                <span id="sipDetailType">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Monthly Amount:</label>
+                <span id="sipDetailAmount">-</span>
+              </div>
+              <div class="field">
+                <label>Investment Tenure:</label>
+                <span id="sipDetailTenure">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Start Date:</label>
+                <span id="sipDetailStartDate">-</span>
+              </div>
+              <div class="field">
+                <label>Expected Return:</label>
+                <span id="sipDetailReturn">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Status:</label>
+                <span id="sipDetailStatus">-</span>
+              </div>
+              <div class="field">
+                <label>Submitted:</label>
+                <span id="sipDetailSubmitted">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Total Invested:</label>
+                <span id="sipDetailInvested">-</span>
+              </div>
+              <div class="field">
+                <label>Current Value:</label>
+                <span id="sipDetailValue">-</span>
+              </div>
+            </div>
+          </div>
+          <div id="sipError" class="error" style="display:none;"></div>
+        </div>
+        <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 16px; border-top:1px solid #e2e8f0; background:#f8f9fa;">
+          <button type="button" class="btn ghost" id="sipCloseBtn">Close</button>
+          <button type="button" class="btn solid" id="sipApproveBtn" style="background:#28a745;color:white;">Approve</button>
+          <button type="button" class="btn solid" id="sipDeclineBtn" style="background:#dc3545;color:white;">Decline</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SGB Requests ===== -->
+    <section id="sec-sgb" class="dash-section">
+      <div class="card">
+        <div class="card-head">
+          <h3>Sovereign Gold Bond Requests</h3>
+          <div>
+            <button type="button" class="btn ghost" id="sgbRefreshBtn">Refresh</button>
+            <select id="sgbStatusFilter" class="sel">
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="ALL">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="sgb-wrap">
+          <table id="sgb-table" style="width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed;">
+            <colgroup>
+              <col style="width:8%">
+              <col style="width:15%">
+              <col style="width:15%">
+              <col style="width:12%">
+              <col style="width:10%">
+              <col style="width:10%">
+              <col style="width:10%">
+              <col style="width:10%">
+              <col style="width:10%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">ID</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Customer</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Series</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Investment Amount</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Units (grams)</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">PAN Number</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Status</th>
+                <th style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Submitted</th>
+                <th class="right" style="padding:12px 8px; border-bottom:2px solid #e0e0e0;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sgbBody"></tbody>
+          </table>
+        </div>
+        <div id="sgbEmpty" class="muted" style="display:none">No SGB applications found.</div>
+        <div id="sgbMsg" class="form-msg"></div>
+      </div>
+    </section>
+
+    <!-- SGB Details Modal -->
+    <div id="sgbModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:9999;">
+      <div class="modal-content" style="width:760px; max-width:92vw; background:#ffffff; color:#000000; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+        <div class="modal-header">
+          <h3>SGB Application Details</h3>
+          <button type="button" class="close-btn" id="sgbClose">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:16px">
+          <div id="sgbDetails">
+            <div class="row two">
+              <div class="field">
+                <label>Application ID:</label>
+                <span id="sgbDetailId">-</span>
+              </div>
+              <div class="field">
+                <label>Customer Name:</label>
+                <span id="sgbDetailCustomer">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Account Number:</label>
+                <span id="sgbDetailAccount">-</span>
+              </div>
+              <div class="field">
+                <label>Series:</label>
+                <span id="sgbDetailSeries">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Investment Amount:</label>
+                <span id="sgbDetailAmount">-</span>
+              </div>
+              <div class="field">
+                <label>Units (grams):</label>
+                <span id="sgbDetailUnits">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>PAN Number:</label>
+                <span id="sgbDetailPan">-</span>
+              </div>
+              <div class="field">
+                <label>Current Value:</label>
+                <span id="sgbDetailValue">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Interest Earned:</label>
+                <span id="sgbDetailInterest">-</span>
+              </div>
+              <div class="field">
+                <label>Status:</label>
+                <span id="sgbDetailStatus">-</span>
+              </div>
+            </div>
+            <div class="row two">
+              <div class="field">
+                <label>Submitted:</label>
+                <span id="sgbDetailSubmitted">-</span>
+              </div>
+              <div class="field">
+                <label>KYC Document:</label>
+                <span id="sgbDetailKyc">-</span>
+              </div>
+            </div>
+          </div>
+          <div id="sgbError" class="error" style="display:none;"></div>
+        </div>
+        <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 16px; border-top:1px solid #e2e8f0; background:#f8f9fa;">
+          <button type="button" class="btn ghost" id="sgbCloseBtn">Close</button>
+          <button type="button" class="btn solid" id="sgbApproveBtn" style="background:#28a745;color:white;">Approve</button>
+          <button type="button" class="btn solid" id="sgbDeclineBtn" style="background:#dc3545;color:white;">Decline</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Accept Deposit ===== -->
+    <section id="sec-deposit" class="dash-section">
+      <div class="card" style="max-width:960px">
+        <h3>Accept Cash Deposit</h3>
+        <div id="dep-msg" class="form-msg" style="display:none"></div>
+        <div class="row two">
+          <div class="field"><label class="lbl">Account Number</label><input id="dep-accno" type="text" placeholder="Enter account number" /></div>
+          <div class="field"><label class="lbl">Amount</label><input id="dep-amt" type="number" min="1" step="0.01" placeholder="0.00" /></div>
+        </div>
+        <div class="row two" style="margin-top:8px">
+          <div class="field"><label class="lbl">Depositor Name (optional)</label><input id="dep-name" type="text" /></div>
+          <div class="field"><label class="lbl">Teller Note (optional)</label><input id="dep-note" type="text" /></div>
+        </div>
+        <div style="margin-top:12px">
+          <button id="dep-submit" class="btn-pill btn-primary" style="width:auto">Deposit Money</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== Account Request Detail Modal ===== -->
+<div id="detail-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:9999;">
+  <div style="width:720px; max-width:92vw; background:#ffffff; color:#000000; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line);">
+      <div style="font-weight:700; font-size:16px">Account Request Details</div>
+      <button id="detail-close" class="btn-pill btn-outline" style="width:auto">Close</button>
+    </div>
+
+    <div style="padding:16px">
+      <div id="detail-error" class="form-msg error" style="display:none"></div>
+
+      <div class="row two" style="margin-bottom:8px">
+        <div><div class="lbl">Request ID</div><div id="d-id" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Status</div><div id="d-status" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Customer</div><div id="d-customer" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Branch</div><div id="d-branch" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Product</div><div id="d-product" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Created</div><div id="d-created" style="font-weight:600;"></div></div>
+      </div>
+
+      <div class="lbl" style="margin-top:6px">KYC Documents</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <a id="btn-photo"   class="btn-pill btn-outline" target="_blank" style="display:none;width:auto">Preview Photo</a>
+        <a id="btn-aadhaar" class="btn-pill btn-outline" target="_blank" style="display:none;width:auto">Preview Aadhaar</a>
+        <a id="btn-pan"     class="btn-pill btn-outline" target="_blank" style="display:none;width:auto">Preview PAN</a>
+      </div>
+
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+        <button id="detail-approve" class="btn-pill btn-primary" style="width:auto">Approve</button>
+        <input id="detail-remark" type="text" class="field" placeholder="Reason to decline (required)"
+               style="flex:1; min-width:220px; padding:10px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; color:#000000">
+        <button id="detail-decline" class="btn-pill" style="width:auto;background:#dc3545;border-color:#dc3545;color:#ffffff">Decline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Loan Detail + Disbursement Modal ===== -->
+<div id="loan-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:9999;">
+  <div style="width:760px; max-width:92vw; background:#ffffff; color:#000000; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line);">
+      <div style="font-weight:700; font-size:16px">Loan Application Details</div>
+      <button id="loan-close" class="btn-pill btn-outline" style="width:auto">Close</button>
+    </div>
+
+    <div style="padding:16px">
+      <div id="loan-error" class="form-msg error" style="display:none"></div>
+
+      <div class="row two" style="margin-bottom:8px">
+        <div><div class="lbl">Application ID</div><div id="l-id" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Status</div><div id="l-status" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Customer</div><div id="l-customer" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Product</div><div id="l-product" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Amount</div><div id="l-amount" style="font-weight:600;"></div></div>
+        <div><div class="lbl">Created</div><div id="l-created" style="font-weight:600;"></div></div>
+      </div>
+
+      <div class="lbl" style="margin-top:6px">Documents</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <div id="loan-docs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+      </div>
+
+      <div class="inner-card" style="margin-bottom:12px">
+        <div style="font-weight:600;margin-bottom:8px">Approve / Decline</div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button id="loan-approve" class="btn-pill btn-primary" style="width:auto">Approve</button>
+          <input id="loan-remark" type="text" class="field" placeholder="Reason to decline (required)"
+                style="flex:1; min-width:220px; padding:10px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; color:#000000">
+          <button id="loan-decline" class="btn-pill" style="width:auto;background:#dc3545;border-color:#dc3545;color:#ffffff">Decline</button>
+        </div>
+      </div>
+
+      <div class="inner-card">
+        <div style="font-weight:600;margin-bottom:8px">Disburse (after Approval)</div>
+        <div class="row two">
+          <div class="field">
+            <label class="lbl">Credit To Account No.</label>
+            <input id="disb-accno" type="text" placeholder="Customer account number" />
+          </div>
+          <div class="field">
+            <label class="lbl">Disburse Amount (₹)</label>
+            <input id="disb-amount" type="number" min="1" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+        <div class="row two" style="margin-top:8px">
+          <div class="field">
+            <label class="lbl">Rate p.a. (%)</label>
+            <input id="disb-rate" type="number" min="0" step="0.01" placeholder="12.00" />
+          </div>
+          <div class="field">
+            <label class="lbl">Term (months)</label>
+            <input id="disb-term" type="number" min="1" step="1" placeholder="12" />
+          </div>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+          <button id="disb-submit" class="btn-pill btn-primary" style="width:auto">Disburse Amount</button>
+          <div id="disb-msg" class="form-msg" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+  <!---------------------------------------------------
+  ----------------Scripts Code Start --------------------
+  ---------------------------------------------------->
+<script>
+  // ===== Sidebar section switch =====
+  // ===== Sidebar section switch =====
+const btns = [...document.querySelectorAll('.nav-btn[data-target]')];
+const sections = [...document.querySelectorAll('.dash-section')];
+btns.forEach(b => b.addEventListener('click', () => {
+  btns.forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  const id = b.getAttribute('data-target');
+  sections.forEach(s => s.classList.toggle('show', s.id === id));
+  if (id === 'sec-requests') loadRequests();
+  if (id === 'sec-loans')    loadLoans();
+  if (id === 'sec-cards-cc') loadCreditCards();   // 👈 added line
+  if (id === 'sec-cards-dc') loadDebitCards();    // 👈 add this line
+  if (id === 'sec-sip') { 
+    // Use the simple loader function that works correctly
+    if (typeof window.simpleLoadSIPs === 'function') {
+      window.simpleLoadSIPs();
+    } else {
+      console.error('simpleLoadSIPs function not found');
+    }
+  }
+  if (id === 'sec-sgb') {
+    // Load SGB requests
+    if (typeof window.simpleLoadSGBs === 'function') {
+      window.simpleLoadSGBs();
+    } else {
+      console.error('simpleLoadSGBs function not found');
+    }
+  }
+
+}));
+
+
+  // ===== SIP Functions (Global) =====
+  window.openSIP = async function(id) {
+    if (!id) return;
+    
+    const sipModal = document.getElementById('sipModal');
+    const sipError = document.getElementById('sipError');
+    const sipApproveBtn = document.getElementById('sipApproveBtn');
+    const sipDeclineBtn = document.getElementById('sipDeclineBtn');
+    
+    if (!sipModal) {
+      console.error('SIP modal not found');
+      return;
+    }
+    
+    // Show modal with loading state
+    sipModal.style.display = 'flex';
+    sipError.style.display = 'none';
+    
+    // Hide action buttons initially
+    if (sipApproveBtn) sipApproveBtn.style.display = 'none';
+    if (sipDeclineBtn) sipDeclineBtn.style.display = 'none';
+    
+    // Clear previous data
+    document.getElementById('sipDetailId').textContent = '-';
+    document.getElementById('sipDetailCustomer').textContent = '-';
+    document.getElementById('sipDetailFund').textContent = '-';
+    document.getElementById('sipDetailType').textContent = '-';
+    document.getElementById('sipDetailAmount').textContent = '-';
+    document.getElementById('sipDetailTenure').textContent = '-';
+    document.getElementById('sipDetailStartDate').textContent = '-';
+    document.getElementById('sipDetailReturn').textContent = '-';
+    document.getElementById('sipDetailStatus').textContent = '-';
+    document.getElementById('sipDetailSubmitted').textContent = '-';
+    document.getElementById('sipDetailInvested').textContent = '-';
+    document.getElementById('sipDetailValue').textContent = '-';
+    
+    try {
+      const response = await fetch(`/api/ops/sip/${encodeURIComponent(id)}`);
+      const data = await response.json();
+      
+      console.log('SIP Details Response:', data);
+      
+      if (response.ok && data.ok && data.sip_app) {
+        const sip = data.sip_app;
+        
+        // Populate modal with SIP details
+        document.getElementById('sipDetailId').textContent = sip.id || '-';
+        document.getElementById('sipDetailCustomer').textContent = sip.customer_name || '-';
+        document.getElementById('sipDetailFund').textContent = sip.fund_name || '-';
+        document.getElementById('sipDetailType').textContent = sip.fund_type || '-';
+        document.getElementById('sipDetailAmount').textContent = sip.monthly_amount ? `₹ ${Number(sip.monthly_amount).toFixed(2)}` : '-';
+        document.getElementById('sipDetailTenure').textContent = sip.tenure_months ? `${sip.tenure_months} months` : '-';
+        document.getElementById('sipDetailStartDate').textContent = sip.start_date || '-';
+        document.getElementById('sipDetailReturn').textContent = sip.expected_return_pa ? `${sip.expected_return_pa}% p.a.` : '-';
+        
+        // Status with styling
+        const statusSpan = document.getElementById('sipDetailStatus');
+        statusSpan.textContent = sip.status || 'PENDING';
+        statusSpan.className = sip.status === 'APPROVED' ? 'status-pill ok' : (sip.status === 'PENDING' ? 'status-pill' : 'status-pill warn');
+        
+        document.getElementById('sipDetailSubmitted').textContent = sip.created_at ? new Date(sip.created_at).toLocaleDateString() : '-';
+        document.getElementById('sipDetailInvested').textContent = sip.total_invested ? `₹ ${Number(sip.total_invested).toFixed(2)}` : '₹ 0.00';
+        document.getElementById('sipDetailValue').textContent = sip.current_value ? `₹ ${Number(sip.current_value).toFixed(2)}` : '₹ 0.00';
+        
+        // Show action buttons only for PENDING status
+        if (sip.status === 'PENDING') {
+          if (sipApproveBtn) sipApproveBtn.style.display = 'inline-block';
+          if (sipDeclineBtn) sipDeclineBtn.style.display = 'inline-block';
+          
+          // Set up approve button
+          sipApproveBtn.onclick = async () => {
+            sipApproveBtn.disabled = true;
+            try {
+              const approveResponse = await fetch(`/api/ops/sip/${encodeURIComponent(id)}/approve`, {
+                method: 'POST'
+              });
+              const approveData = await approveResponse.json();
+              
+              if (approveResponse.ok && approveData.ok) {
+                alert('SIP application approved successfully!');
+                sipModal.style.display = 'none';
+                // Refresh the SIP list
+                if (window.simpleLoadSIPs) window.simpleLoadSIPs();
+              } else {
+                alert(approveData.message || 'Failed to approve SIP application');
+              }
+            } catch (error) {
+              alert('Network error: ' + error.message);
+            } finally {
+              sipApproveBtn.disabled = false;
+            }
+          };
+          
+          // Set up decline button
+          sipDeclineBtn.onclick = async () => {
+            const remark = prompt('Please enter reason for declining this SIP application:');
+            if (!remark || remark.trim() === '') {
+              alert('Remark is required for declining the application');
+              return;
+            }
+            
+            sipDeclineBtn.disabled = true;
+            try {
+              const declineResponse = await fetch(`/api/ops/sip/${encodeURIComponent(id)}/decline`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ remark: remark.trim() })
+              });
+              const declineData = await declineResponse.json();
+              
+              if (declineResponse.ok && declineData.ok) {
+                alert('SIP application declined successfully!');
+                sipModal.style.display = 'none';
+                // Refresh the SIP list
+                if (window.simpleLoadSIPs) window.simpleLoadSIPs();
+              } else {
+                alert(declineData.message || 'Failed to decline SIP application');
+              }
+            } catch (error) {
+              alert('Network error: ' + error.message);
+            } finally {
+              sipDeclineBtn.disabled = false;
+            }
+          };
+        } else {
+          // Hide buttons for non-pending status
+          if (sipApproveBtn) sipApproveBtn.style.display = 'none';
+          if (sipDeclineBtn) sipDeclineBtn.style.display = 'none';
+        }
+        
+        console.log('SIP details loaded successfully');
+      } else {
+        console.error('Failed to load SIP details:', data);
+        sipError.textContent = data.message || 'Failed to load SIP details';
+        sipError.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('SIP loading error:', error);
+      sipError.textContent = 'Network error: ' + error.message;
+      sipError.style.display = 'block';
+    }
+  };
+
+  window.simpleLoadSIPs = async function() {
+    console.log('=== Simple SIP Loader ===');
+    const sipBody = document.getElementById('sipBody');
+    if (!sipBody) {
+      console.error('sipBody element not found');
+      return;
+    }
+    
+    // Show loading
+    sipBody.innerHTML = '<tr><td colspan="9" style="padding:12px;color:var(--muted);text-align:center;">Loading…</td></tr>';
+    
+    try {
+      const response = await fetch('/api/ops/sip?status=PENDING');
+      const data = await response.json();
+      
+      console.log('SIP API Response:', data);
+      
+      if (response.ok && data.ok && Array.isArray(data.items)) {
+        if (data.items.length === 0) {
+          const sipEmpty = document.getElementById('sipEmpty');
+          if (sipEmpty) sipEmpty.style.display = '';
+          sipBody.innerHTML = '';
+          console.log('No SIP applications found');
+        } else {
+          // Hide empty message
+          const sipEmpty = document.getElementById('sipEmpty');
+          if (sipEmpty) sipEmpty.style.display = 'none';
+          
+          // Build HTML string for all rows
+          let rowsHTML = '';
+          data.items.forEach((item, index) => {
+            const created = item.created_at ? new Date(item.created_at).toLocaleDateString() : '-';
+            const statusClass = item.status === 'APPROVED' ? 'ok' : (item.status === 'PENDING' ? '' : 'warn');
+            
+            rowsHTML += `
+              <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:15px 8px; vertical-align:top;">${item.id}</td>
+                <td style="padding:15px 8px; vertical-align:top;">${item.customer_name || '-'}</td>
+                <td style="padding:15px 8px; vertical-align:top; line-height:1.4;">${item.fund_name || '-'}</td>
+                <td style="padding:15px 8px; vertical-align:top;">${item.fund_type || '-'}</td>
+                <td style="padding:15px 8px; vertical-align:top;">₹ ${Number(item.monthly_amount || 0).toFixed(2)}</td>
+                <td style="padding:15px 8px; vertical-align:top;">${item.tenure_months || 0} months</td>
+                <td style="padding:15px 8px; text-align:center; vertical-align:top;">
+                  <span class="status-pill ${statusClass}">${item.status || 'PENDING'}</span>
+                </td>
+                <td style="padding:15px 8px; vertical-align:top;">${created}</td>
+                <td style="padding:15px 8px; text-align:center; vertical-align:top;">
+                  <button class="sip-view btn-pill btn-outline" data-id="${item.id}">View</button>
+                </td>
+              </tr>
+            `;
+            console.log(`Prepared row ${index + 1} for SIP ID: ${item.id}`);
+          });
+          
+          // Set all rows at once
+          sipBody.innerHTML = rowsHTML;
+          console.log(`Successfully loaded ${data.items.length} SIP applications into table`);
+        }
+      } else {
+        console.error('Invalid API response:', data);
+        sipBody.innerHTML = '<tr><td colspan="9" style="padding:12px;color:red;text-align:center;">Error loading SIP applications</td></tr>';
+      }
+    } catch (error) {
+      console.error('SIP loading error:', error);
+      sipBody.innerHTML = '<tr><td colspan="9" style="padding:12px;color:red;text-align:center;">Network error</td></tr>';
+    }
+  };
+
+  // Global event listener for SIP view buttons (outside any closure)
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.classList.contains('sip-view')) {
+      const id = e.target.getAttribute('data-id');
+      console.log('Global SIP view button clicked, ID:', id);
+      if (id && window.openSIP) {
+        window.openSIP(id);
+      }
+    }
+    
+    // SIP modal close handlers
+    if (e.target && (e.target.id === 'sipClose' || e.target.id === 'sipCloseBtn')) {
+      const sipModal = document.getElementById('sipModal');
+      if (sipModal) sipModal.style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    if (e.target && e.target.id === 'sipModal') {
+      e.target.style.display = 'none';
+    }
+  });
+
+  // Test function to manually open SIP modal
+  window.testSIPModal = function() {
+    const sipModal = document.getElementById('sipModal');
+    if (sipModal) {
+      sipModal.style.display = 'flex';
+      console.log('SIP modal opened for testing');
+    } else {
+      console.error('SIP modal not found');
+    }
+  };
+
+  // ===== SGB Functions (Global) =====
+  window.openSGB = async function(id) {
+    if (!id) return;
+    
+    const sgbModal = document.getElementById('sgbModal');
+    const sgbError = document.getElementById('sgbError');
+    const sgbApproveBtn = document.getElementById('sgbApproveBtn');
+    const sgbDeclineBtn = document.getElementById('sgbDeclineBtn');
+    
+    if (!sgbModal) {
+      console.error('SGB modal not found');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/ops/sgb/${id}`);
+      const data = await response.json();
+      
+      if (response.ok && data.ok && data.sgb_app) {
+        const app = data.sgb_app;
+        
+        // Populate modal fields
+        document.getElementById('sgbDetailId').textContent = app.id || '-';
+        document.getElementById('sgbDetailCustomer').textContent = app.customer_name || '-';
+        document.getElementById('sgbDetailAccount').textContent = app.account_no || '-';
+        document.getElementById('sgbDetailSeries').textContent = app.series || '-';
+        document.getElementById('sgbDetailAmount').textContent = `₹ ${Number(app.investment_amount || 0).toFixed(2)}`;
+        document.getElementById('sgbDetailUnits').textContent = app.units || '-';
+        document.getElementById('sgbDetailPan').textContent = app.pan_number || '-';
+        document.getElementById('sgbDetailValue').textContent = `₹ ${Number(app.current_value || 0).toFixed(2)}`;
+        document.getElementById('sgbDetailInterest').textContent = `₹ ${Number(app.interest_earned || 0).toFixed(2)}`;
+        document.getElementById('sgbDetailStatus').textContent = app.status || '-';
+        document.getElementById('sgbDetailSubmitted').textContent = app.created_at ? new Date(app.created_at).toLocaleDateString() : '-';
+        document.getElementById('sgbDetailKyc').textContent = app.kyc_file_path ? 'Yes' : 'No';
+        
+        // Show modal
+        sgbModal.style.display = 'flex';
+        sgbError.style.display = 'none';
+        
+        // Show/hide approve/decline buttons based on status
+        if (app.status === 'PENDING') {
+          if (sgbApproveBtn) {
+            sgbApproveBtn.style.display = 'inline-block';
+            sgbApproveBtn.disabled = false;
+          }
+          if (sgbDeclineBtn) {
+            sgbDeclineBtn.style.display = 'inline-block';
+            sgbDeclineBtn.disabled = false;
+          }
+          
+          // Set up approve button
+          sgbApproveBtn.onclick = async () => {
+            sgbApproveBtn.disabled = true;
+            try {
+              const approveResponse = await fetch(`/api/ops/sgb/${id}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+              });
+              const approveData = await approveResponse.json();
+              
+              if (approveResponse.ok && approveData.ok) {
+                alert('SGB application approved successfully!');
+                sgbModal.style.display = 'none';
+                if (window.simpleLoadSGBs) window.simpleLoadSGBs();
+              } else {
+                alert(approveData.message || 'Failed to approve SGB application');
+              }
+            } catch (error) {
+              alert('Network error: ' + error.message);
+            } finally {
+              sgbApproveBtn.disabled = false;
+            }
+          };
+          
+          // Set up decline button
+          sgbDeclineBtn.onclick = async () => {
+            const remark = prompt('Please enter reason for declining this SGB application:');
+            if (!remark || remark.trim() === '') {
+              alert('Remark is required for declining the application');
+              return;
+            }
+            
+            sgbDeclineBtn.disabled = true;
+            try {
+              const declineResponse = await fetch(`/api/ops/sgb/${id}/decline`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ remark: remark.trim() })
+              });
+              const declineData = await declineResponse.json();
+              
+              if (declineResponse.ok && declineData.ok) {
+                alert('SGB application declined successfully!');
+                sgbModal.style.display = 'none';
+                if (window.simpleLoadSGBs) window.simpleLoadSGBs();
+              } else {
+                alert(declineData.message || 'Failed to decline SGB application');
+              }
+            } catch (error) {
+              alert('Network error: ' + error.message);
+            } finally {
+              sgbDeclineBtn.disabled = false;
+            }
+          };
+        } else {
+          // Hide buttons for non-pending status
+          if (sgbApproveBtn) sgbApproveBtn.style.display = 'none';
+          if (sgbDeclineBtn) sgbDeclineBtn.style.display = 'none';
+        }
+        
+        console.log('SGB details loaded successfully');
+      } else {
+        console.error('Failed to load SGB details:', data);
+        sgbError.textContent = data.message || 'Failed to load SGB details';
+        sgbError.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('SGB loading error:', error);
+      sgbError.textContent = 'Network error: ' + error.message;
+      sgbError.style.display = 'block';
+    }
+  };
+
+  // SGB loader function
+  window.simpleLoadSGBs = async function() {
+    console.log('=== Simple SGB Loader ===');
+    const sgbBody = document.getElementById('sgbBody');
+    if (!sgbBody) {
+      console.error('sgbBody element not found');
+      return;
+    }
+    
+    // Show loading
+    sgbBody.innerHTML = '<tr><td colspan="9" style="padding:12px;color:var(--muted);text-align:center;">Loading…</td></tr>';
+    
+    try {
+      const statusFilter = document.getElementById('sgbStatusFilter')?.value || 'PENDING';
+      const url = statusFilter === 'ALL' ? '/api/ops/sgb' : `/api/ops/sgb?status=${statusFilter}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      console.log('SGB API Response:', data);
+      
+      if (response.ok && data.ok && Array.isArray(data.items)) {
+        if (data.items.length === 0) {
+          const sgbEmpty = document.getElementById('sgbEmpty');
+          if (sgbEmpty) sgbEmpty.style.display = '';
+          sgbBody.innerHTML = '';
+        } else {
+          const sgbEmpty = document.getElementById('sgbEmpty');
+          if (sgbEmpty) sgbEmpty.style.display = 'none';
+          
+          let rowsHTML = '';
+          data.items.forEach((item) => {
+            const statusClass = item.status === 'APPROVED' ? 'ok' : (item.status === 'PENDING' ? '' : 'warn');
+            const createdDate = item.created_at ? new Date(item.created_at).toLocaleDateString() : '-';
+            
+            rowsHTML += `
+              <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:15px 8px; vertical-align:top;">${item.id}</td>
+                <td style="padding:15px 8px; vertical-align:top;">${item.customer_name || '-'}</td>
+                <td style="padding:15px 8px; vertical-align:top;">${item.series || '-'}</td>
+                <td style="padding:15px 8px; vertical-align:top;">₹ ${Number(item.investment_amount || 0).toFixed(2)}</td>
+                <td style="padding:15px 8px; vertical-align:top;">${item.units || '-'}</td>
+                <td style="padding:15px 8px; vertical-align:top;">${item.pan_number || '-'}</td>
+                <td style="padding:15px 8px; text-align:center; vertical-align:top;">
+                  <span class="status-pill ${statusClass}">${item.status || 'PENDING'}</span>
+                </td>
+                <td style="padding:15px 8px; vertical-align:top;">${createdDate}</td>
+                <td style="padding:15px 8px; text-align:center; vertical-align:top;">
+                  <button class="btn ghost small sgb-view" data-id="${item.id}">View</button>
+                </td>
+              </tr>
+            `;
+          });
+          
+          sgbBody.innerHTML = rowsHTML;
+        }
+      } else {
+        console.error('Invalid SGB API response:', data);
+        sgbBody.innerHTML = '<tr><td colspan="9" style="padding:12px;color:red;text-align:center;">Failed to load SGB applications</td></tr>';
+      }
+    } catch (error) {
+      console.error('SGB loading error:', error);
+      sgbBody.innerHTML = '<tr><td colspan="9" style="padding:12px;color:red;text-align:center;">Network error</td></tr>';
+    }
+  };
+
+  // Global event listener for SGB view buttons
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.classList.contains('sgb-view')) {
+      const id = e.target.getAttribute('data-id');
+      console.log('Global SGB view button clicked, ID:', id);
+      if (id && window.openSGB) {
+        window.openSGB(id);
+      }
+    }
+    
+    // SGB modal close handlers
+    if (e.target && (e.target.id === 'sgbClose' || e.target.id === 'sgbCloseBtn')) {
+      const sgbModal = document.getElementById('sgbModal');
+      if (sgbModal) sgbModal.style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    if (e.target && e.target.id === 'sgbModal') {
+      e.target.style.display = 'none';
+    }
+  });
+
+  // ===== Overview counts =====
+  async function safeJson(res){
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await res.json();
+    const t = await res.text(); return { ok:false, message: (t||'').split('\n').find(l=>l.trim()) || 'Unexpected response' };
+  }
+  async function countPending(url){
+    try{ const r=await fetch(url); const d=await safeJson(r); if(!r.ok||d.ok===false) return 0; return (d.items||[]).length; }catch{return 0;}
+  }
+  async function loadOverview(){
+    document.getElementById('ovr-acc-req').textContent = '…';
+    document.getElementById('ovr-loan-req').textContent = '…';
+    document.getElementById('ovr-sip-req').textContent = '…';
+    document.getElementById('ovr-sgb-req').textContent = '…';
+    try{
+      const [acc, loan, sip, sgb] = await Promise.all([
+        countPending('/api/ops/requests?status=PENDING'),
+        countPending('/api/ops/loans/applications?status=PENDING'),
+        countPending('/api/ops/sip?status=PENDING'),
+        countPending('/api/ops/sgb?status=PENDING')
+      ]);
+      document.getElementById('ovr-acc-req').textContent = acc;
+      document.getElementById('ovr-loan-req').textContent = loan;
+      document.getElementById('ovr-sip-req').textContent = sip;
+      document.getElementById('ovr-sgb-req').textContent = sgb;
+    }catch{
+      document.getElementById('ovr-acc-req').textContent = '—';
+      document.getElementById('ovr-loan-req').textContent = '—';
+      document.getElementById('ovr-sip-req').textContent = '—';
+      document.getElementById('ovr-sgb-req').textContent = '—';
+    }
+    document.getElementById('ovr-deposits').textContent  = '—';
+    document.getElementById('ovr-disbursals').textContent= '—';
+  }
+  document.getElementById('btn-ovr-refresh').addEventListener('click', loadOverview);
+  loadOverview();
+
+  // ===== Account Requests table =====
+  const reqMsg   = document.getElementById('req-msg');
+  const reqBody  = document.getElementById('req-body');
+  const reqEmpty = document.getElementById('req-empty');
+  document.getElementById('req-refresh').addEventListener('click', loadRequests);
+
+  async function loadRequests(){
+    reqMsg.style.display='none';
+    reqBody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>';
+    reqEmpty.style.display='none';
+    try{
+      const res = await fetch('/api/ops/requests?status=PENDING');
+      const data = await safeJson(res);
+      if(!res.ok || data.ok === false){
+        reqBody.innerHTML=''; reqMsg.textContent=data.message||'Failed to load'; reqMsg.style.display=''; return;
+      }
+      if(!data.items || data.items.length===0){ reqBody.innerHTML=''; reqEmpty.style.display=''; return; }
+      reqBody.innerHTML='';
+      for(const it of data.items){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${it.id}</td>
+          <td>${it.customer_name || it.customer_id}</td>
+          <td>${it.branch_code || it.branch_id}</td>
+          <td>${it.product}</td>
+          <td>${it.status}</td>
+          <td>
+            <span class="action-group">
+              <button class="btn-view   btn-pill btn-outline" data-id="${it.id}">View</button>
+              <button class="btn-approve btn-pill btn-primary" data-id="${it.id}">Approve</button>
+            </span>
+          </td>`;
+        reqBody.appendChild(tr);
+      }
+    }catch(e){
+      reqBody.innerHTML='';
+      reqMsg.textContent='Network error';
+      reqMsg.style.display='';
+    }
+  }
+
+  // ===== Account Request Detail modal =====
+  const modal = document.getElementById('detail-modal');
+  const closeBtn = document.getElementById('detail-close');
+  const dErr = document.getElementById('detail-error');
+  const dId = document.getElementById('d-id'), dStatus=document.getElementById('d-status'),
+        dCustomer=document.getElementById('d-customer'), dBranch=document.getElementById('d-branch'),
+        dProduct=document.getElementById('d-product'), dCreated=document.getElementById('d-created');
+  const btnPhoto=document.getElementById('btn-photo'), btnAadhaar=document.getElementById('btn-aadhaar'), btnPAN=document.getElementById('btn-pan');
+  const btnApprove=document.getElementById('detail-approve'), btnDecline=document.getElementById('detail-decline');
+  const inputRemark=document.getElementById('detail-remark');
+
+  function showModal(){ modal.style.display='flex'; }
+  function hideModal(){ modal.style.display='none'; }
+  closeBtn.addEventListener('click', hideModal);
+  modal.addEventListener('click', e => { if(e.target===modal) hideModal(); });
+
+  function setPreview(anchor, filename){
+    const f = (filename||'').split('/').pop();
+    if(f){ anchor.href=`/api/employee/file/kyc/${encodeURIComponent(f)}`; anchor.style.display=''; }
+    else { anchor.style.display='none'; anchor.removeAttribute('href'); }
+  }
+
+  async function openDetail(id){
+    dErr.style.display='none';
+    dId.textContent=id; dStatus.textContent=dCustomer.textContent=dBranch.textContent=dProduct.textContent=dCreated.textContent='';
+    inputRemark.value='';
+    setPreview(btnPhoto,''); setPreview(btnAadhaar,''); setPreview(btnPAN,'');
+
+    try{
+      const res = await fetch(`/api/ops/requests/${id}`);
+      const data = await safeJson(res);
+      if(!res.ok || data.ok === false){ dErr.textContent=data.message||'Failed to load details'; dErr.style.display=''; }
+      else{
+        const it = data.item;
+        dStatus.textContent = it.status||''; dCustomer.textContent=it.customer_name||it.full_name||it.customer_id||'';
+        dBranch.textContent = it.branch_code||it.branch_id||''; dProduct.textContent=it.product||''; dCreated.textContent=it.created_at||'';
+        setPreview(btnPhoto, it.photo_file_path||it.kyc_photo_path);
+        setPreview(btnAadhaar, it.aadhaar_file_path||it.aadhaar_path);
+        setPreview(btnPAN, it.pan_file_path||it.pan_path);
+      }
+    }catch{ dErr.textContent='Network error'; dErr.style.display=''; }
+
+    btnApprove.onclick = async () => {
+      btnApprove.disabled=true;
+      try{
+        const r=await fetch(`/api/ops/requests/${id}/approve`,{method:'POST'}); const d=await safeJson(r);
+        if(r.ok && d.ok){ hideModal(); loadRequests(); loadOverview(); } else alert(d.message||'Approve failed');
+      }catch{ alert('Network error'); } finally{ btnApprove.disabled=false; }
+    };
+
+    btnDecline.onclick = async () => {
+      const remark=(inputRemark.value||'').trim(); if(!remark){ inputRemark.focus(); return; }
+      btnDecline.disabled=true;
+      try{
+        const r=await fetch(`/api/ops/requests/${id}/decline`,{
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({remark})
+        });
+        const d=await safeJson(r);
+        if(r.ok && d.ok){ hideModal(); loadRequests(); loadOverview(); } else alert(d.message||'Decline failed');
+      }catch{ alert('Network error'); } finally{ btnDecline.disabled=false; }
+    };
+
+    showModal();
+  }
+
+  // Row actions for account requests
+  document.addEventListener('click', e => {
+    if(e.target.classList.contains('btn-view'))    openDetail(e.target.dataset.id);
+    if(e.target.classList.contains('btn-approve')){
+      const id=e.target.dataset.id; e.target.disabled=true;
+      fetch(`/api/ops/requests/${id}/approve`,{method:'POST'})
+        .then(safeJson)
+        .then(d=>{ if(d.ok) { loadRequests(); loadOverview(); } else alert(d.message||'Approve failed'); })
+        .catch(()=>alert('Network error'))
+        .finally(()=>{ e.target.disabled=false; });
+    }
+  });
+
+  // ===== Loans: list & modal =====
+  const loanBody  = document.getElementById('loan-body');
+  const loanEmpty = document.getElementById('loan-empty');
+  const loanMsg   = document.getElementById('loan-msg');
+  const loanFilter= document.getElementById('loan-filter');
+  document.getElementById('loan-refresh').addEventListener('click', loadLoans);
+  loanFilter.addEventListener('change', loadLoans);
+
+  async function loadLoans(){
+    loanMsg.style.display='none';
+    loanBody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted)">Loading…</td></tr>';
+    loanEmpty.style.display='none';
+    const status = (loanFilter.value || 'PENDING').toUpperCase();
+    try{
+      const res = await fetch(`/api/ops/loans/applications?status=${encodeURIComponent(status)}`);
+      const data = await safeJson(res);
+      if(!res.ok || data.ok === false){
+        loanBody.innerHTML=''; loanMsg.textContent=data.message||'Failed to load'; loanMsg.style.display=''; return;
+      }
+      const items = data.items || [];
+      if(items.length===0){ loanBody.innerHTML=''; loanEmpty.style.display=''; return; }
+      loanBody.innerHTML='';
+      for(const it of items){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${it.id}</td>
+          <td>${it.customer_name || it.customer_id}</td>
+          <td>₹ ${Number(it.amount||0).toFixed(2)}</td>
+          <td>${it.product || '-'}</td>
+          <td>${it.status}</td>
+          <td>
+            <span class="action-group">
+             <button class="loan-view btn-pill btn-outline" data-id="${it.id}">View</button>
+             </span>
+            </td>`;
+        loanBody.appendChild(tr);
+      }
+    }catch(e){
+      loanBody.innerHTML='';
+      loanMsg.textContent='Network error';
+      loanMsg.style.display='';
+    }
+  }
+
+  // Loan modal refs
+  const loanModal = document.getElementById('loan-modal');
+  const loanClose = document.getElementById('loan-close');
+  const lErr = document.getElementById('loan-error');
+  const lId = document.getElementById('l-id'), lStatus=document.getElementById('l-status'),
+        lCustomer=document.getElementById('l-customer'), lProduct=document.getElementById('l-product'),
+        lAmount=document.getElementById('l-amount'), lCreated=document.getElementById('l-created');
+  const loanApproveBtn=document.getElementById('loan-approve'), loanDeclineBtn=document.getElementById('loan-decline');
+  const loanRemark=document.getElementById('loan-remark');
+  const loanDocsDiv = document.getElementById('loan-docs');
+
+  const disbAccNo=document.getElementById('disb-accno');
+  const disbAmount=document.getElementById('disb-amount');
+  const disbRate=document.getElementById('disb-rate');
+  const disbTerm=document.getElementById('disb-term');
+  const disbSubmit=document.getElementById('disb-submit');
+  const disbMsg=document.getElementById('disb-msg');
+
+  function showLoanModal(){ loanModal.style.display='flex'; }
+  function hideLoanModal(){ loanModal.style.display='none'; }
+  loanClose.addEventListener('click', hideLoanModal);
+  loanModal.addEventListener('click', e => { if(e.target===loanModal) hideLoanModal(); });
+
+  function setDoc(anchor, filename, label){
+    const f = (filename||'').split('/').pop();
+    anchor.textContent = label;
+    if(f){ anchor.href=`/api/employee/file/kyc/${encodeURIComponent(f)}`; anchor.style.display=''; }
+    else { anchor.style.display='none'; anchor.removeAttribute('href'); }
+  }
+
+  async function openLoan(id){
+    lErr.style.display='none';
+    lId.textContent=id;
+    lStatus.textContent=lCustomer.textContent=lProduct.textContent=lAmount.textContent=lCreated.textContent='';
+    loanRemark.value='';
+    loanDocsDiv.innerHTML = ''; // reset docs
+    disbAccNo.value = ''; disbAmount.value = ''; disbRate.value=''; disbTerm.value='';
+
+    try{
+      const res = await fetch(`/api/ops/loans/applications/${id}`);
+      const data = await safeJson(res);
+      if(!res.ok || data.ok===false){
+        lErr.textContent=data.message||'Failed to load details';
+        lErr.style.display='';
+      }
+      else{
+        const it = data.item || data; // tolerate either shape
+        lStatus.textContent = it.status||'';
+        lCustomer.textContent=it.customer_name||it.customer_id||'';
+        lProduct.textContent= it.product||'';
+        lAmount.textContent = '₹ ' + Number(it.amount||0).toFixed(2);
+        lCreated.textContent = it.created_at || '';
+
+        // prefill disburse amount
+        if (it.amount) disbAmount.value = Number(it.amount).toFixed(2);
+
+        // fetch uploaded documents
+        try {
+          const docRes = await fetch(`/api/ops/loans/${id}/docs`);
+          const docData = await safeJson(docRes);
+          loanDocsDiv.innerHTML = '';
+          if (docRes.ok && docData.ok && docData.docs) {
+            for (const d of docData.docs) {
+              const a = document.createElement('a');
+              a.textContent = d.doc_type || d.file_name || 'Document';
+              const path = (d.file_path || '').split('/').pop();
+              if (path) {
+                a.href = `/api/employee/file/loan/${encodeURIComponent(path)}`;
+                a.target = '_blank';
+                a.className = 'btn-pill btn-outline';
+                a.style.width = 'auto';
+                loanDocsDiv.appendChild(a);
+              }
+            }
+          }
+        } catch(e) {
+          console.error('Docs fetch failed', e);
+        }
+      }
+    }catch{
+      lErr.textContent='Network error';
+      lErr.style.display='';
+    }
+
+    loanApproveBtn.onclick = async () => {
+      loanApproveBtn.disabled=true;
+      try{
+        const r=await fetch(`/api/ops/loans/${id}/approve`, {method:'POST'});
+        const d=await safeJson(r);
+        if(r.ok && d.ok){
+          lStatus.textContent = 'APPROVED';
+          loadLoans(); loadOverview();
+        }
+        else alert(d.message||'Approve failed');
+      }catch{
+        alert('Network error');
+      } finally{
+        loanApproveBtn.disabled=false;
+      }
+    };
+
+    loanDeclineBtn.onclick = async () => {
+      const remark=(loanRemark.value||'').trim();
+      if(!remark){ loanRemark.focus(); return; }
+      loanDeclineBtn.disabled=true;
+      try{
+        const r=await fetch(`/api/ops/loans/${id}/decline`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({remark})
+        });
+        const d=await safeJson(r);
+        if(r.ok && d.ok){
+          lStatus.textContent = 'REJECTED';
+          loadLoans(); loadOverview();
+        }
+        else alert(d.message||'Decline failed');
+      }catch{
+        alert('Network error');
+      } finally{
+        loanDeclineBtn.disabled=false;
+      }
+    };
+
+    disbSubmit.onclick = async () => {
+      disbMsg.style.display='none';
+      const accno=(disbAccNo.value||'').trim();
+      const amtRaw=(disbAmount.value||'').trim();
+      const rateRaw=(disbRate.value||'').trim();
+      const termRaw=(disbTerm.value||'').trim();
+      if(!accno){ disbMsg.textContent='Account number required'; disbMsg.className='form-msg error'; disbMsg.style.display=''; return; }
+      if(!amtRaw || isNaN(Number(amtRaw)) || Number(amtRaw)<=0){ disbMsg.textContent='Enter valid amount'; disbMsg.className='form-msg error'; disbMsg.style.display=''; return; }
+      if(!rateRaw || isNaN(Number(rateRaw)) || Number(rateRaw)<0){ disbMsg.textContent='Enter valid rate'; disbMsg.className='form-msg error'; disbMsg.style.display=''; return; }
+      if(!termRaw || isNaN(Number(termRaw)) || Number(termRaw)<=0){ disbMsg.textContent='Enter valid term'; disbMsg.className='form-msg error'; disbMsg.style.display=''; return; }
+      disbSubmit.disabled=true;
+      try{
+        const r = await fetch(`/api/ops/loans/${id}/disburse`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+          account_no: accno,
+          disburse_amount: amtRaw,
+          rate_pa: rateRaw,
+          term_months: termRaw
+          })
+
+        });
+
+        const d=await safeJson(r);
+        if(r.ok && d.ok){
+          const dispAmt = (typeof d.disbursed_amount === 'number') ? d.disbursed_amount.toFixed(2) : d.disbursed_amount;
+          disbMsg.textContent = `Disbursed ₹${dispAmt} to ${d.account_no || accno}`;
+          disbMsg.className='form-msg'; disbMsg.style.display='';
+          lStatus.textContent = 'APPROVED'; // stays approved; loan record created
+          loadLoans(); loadOverview();
+        }else{
+          disbMsg.textContent = d.message || 'Disbursement failed';
+          disbMsg.className='form-msg error'; disbMsg.style.display='';
+        }
+      }catch(e){
+        disbMsg.textContent = 'Network error';
+        disbMsg.className='form-msg error'; disbMsg.style.display='';
+      } finally {
+        disbSubmit.disabled=false;
+      }
+    };
+
+    showLoanModal();
+  }
+
+  // Row actions for loans
+  document.addEventListener('click', e => {
+    if(e.target.classList.contains('loan-view')) {
+      openLoan(e.target.dataset.id);
+    }
+    // Quick-approve removed intentionally; approvals via modal only
+  });
+
+
+
+  // ===== Accept Cash Deposit =====
+const depSubmit = document.getElementById('dep-submit');
+const depMsg    = document.getElementById('dep-msg');
+
+depSubmit.addEventListener('click', async () => {
+  depMsg.style.display = 'none';
+
+  const account_no    = (document.getElementById('dep-accno').value || '').trim();
+  const amountRaw     = (document.getElementById('dep-amt').value || '').trim();
+  const depositorName = (document.getElementById('dep-name').value || '').trim();
+  const tellerNote    = (document.getElementById('dep-note').value || '').trim();
+
+  // validation
+  if (!account_no) {
+    depMsg.textContent = 'Account number required';
+    depMsg.className = 'form-msg error';
+    depMsg.style.display = '';
+    return;
+  }
+  if (!amountRaw || isNaN(Number(amountRaw)) || Number(amountRaw) <= 0) {
+    depMsg.textContent = 'Enter a valid amount';
+    depMsg.className = 'form-msg error';
+    depMsg.style.display = '';
+    return;
+  }
+
+  depSubmit.disabled = true;
+  try {
+    const r = await fetch('/api/ops/deposits/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        account_no: account_no,
+        amount: amountRaw,
+        depositor_name: depositorName,
+        teller_note: tellerNote
+      })
+    });
+
+    const d = await safeJson(r);
+    if (r.ok && d.ok) {
+      depMsg.textContent = `Deposit successful! Receipt: ${d.receipt_no}, New Balance: ₹${d.new_balance}`;
+      depMsg.className = 'form-msg';
+      depMsg.style.display = '';
+      document.getElementById('dep-accno').value = '';
+      document.getElementById('dep-amt').value = '';
+      document.getElementById('dep-name').value = '';
+      document.getElementById('dep-note').value = '';
+      loadOverview(); // refresh dashboard numbers
+    } else {
+      depMsg.textContent = d.message || 'Deposit failed';
+      depMsg.className = 'form-msg error';
+      depMsg.style.display = '';
+    }
+  } catch (e) {
+    depMsg.textContent = 'Network error';
+    depMsg.className = 'form-msg error';
+    depMsg.style.display = '';
+  } finally {
+    depSubmit.disabled = false;
+  }
+});
+
+
+</script>
+  <!---------------------------------------------------
+  ----------------Scripts Code END --------------------
+  ---------------------------------------------------->
+  
+{% endblock %}

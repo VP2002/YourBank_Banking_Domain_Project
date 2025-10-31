@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}Security{% endblock %}
+
+{% block content %}
+<!-- ===== HERO + HASH STRIP ===== -->
+<section class="sec-hero">
+  <div class="sec-hero__content">
+    <!-- Left Column -->
+    <div class="sec-hero__copy">
+      <div class="sec-pill">Safety · Privacy · Trust</div>
+
+      <h1>
+        <span class="h-top">Your Security is Our</span><br />
+        <span class="accent">Top Priority</span>
+      </h1>
+
+      <p class="sub">
+        At YourBank, we understand the importance of keeping your financial information secure.
+        We employ robust security measures and advanced technologies to protect your personal and financial data.
+        Rest assured that when you bank with us, your security is our utmost priority.
+      </p>
+
+      <!-- Strips -->
+      <div class="highlight-strips">
+        <span class="strip">🔒 Encrypted Banking</span>
+        <span class="strip">🛡️ Multi-Factor Auth</span>
+      </div>
+    </div>
+
+    <!-- Right Column (Image) -->
+    <div class="sec-hero__art">
+      <img class="hero-img" src="{{ url_for('static', filename='images/security-hero.jpg') }}" alt="Security Illustration" />
+    </div>
+  </div>
+
+  <!-- Hash Strip inside hero -->
+  <div class="security-strip">
+    <code>
+      🔒 AUTH_SECURE_2025_X1 🛡️ VERIFY_HASH=9F8A3C7B2D …
+    </code>
+  </div>
+</section>
+
+<!-- ===== FEATURES SECTION ===== -->
+<section id="security-features" class="security-wrap">
+  <h2 class="section-title">How We <span class="accent">Protect You</span></h2>
+  <p class="sub">
+    We prioritize the security and confidentiality of your financial information. Our state-of-the-art
+    encryption technology and stringent data protection measures ensure your assets and transactions
+    are safeguarded at all times.
+  </p>
+
+  <div class="feature-grid">
+    <article class="feature-card">
+      <h3>🔒 Secure Online Banking Platform</h3>
+      <p>Our platform uses multiple layers of security and industry-standard encryption protocols to
+         keep your information confidential during transmission.</p>
+    </article>
+
+    <article class="feature-card">
+      <h3>🛡️ Multi-Factor Authentication</h3>
+      <p>We require additional verification such as a password plus one-time codes for
+         enhanced protection against unauthorized access.</p>
+    </article>
+
+    <article class="feature-card">
+      <h3>🚨 Fraud Monitoring</h3>
+      <p>Our fraud detection systems monitor accounts 24×7 to spot and prevent suspicious activities
+         before they affect you.</p>
+    </article>
+
+    <article class="feature-card">
+      <h3>📱 Secure Mobile Banking</h3>
+      <p>Our mobile app has the same strong protections as our web platform—safe access,
+         secure transactions, and data privacy on the go.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== FAQ SECTION ===== -->
+<section id="security-faq" class="faq-wrap">
+  <h2 class="section-title"><span class="accent">Frequently</span> Asked Questions</h2>
+  <p class="sub">Still have questions? Contact us at <b>support@yourbank.com</b></p>
+
+  <div class="faq-grid">
+    <article class="faq-card">
+      <h3>How do I open an account with YourBank?</h3>
+      <p>Visit our website, click “Open an Account,” and follow the guided process. Provide your
+         details, upload documents, and you’re ready to go.</p>
+    </article>
+
+    <article class="faq-card">
+      <h3>What documents are required for a loan?</h3>
+      <p>Generally ID proof, proof of income, and collateral details (if applicable). Our loan team
+         will guide you through specific requirements.</p>
+    </article>
+
+    <article class="faq-card">
+      <h3>How can I access my accounts online?</h3>
+      <p>Simply log in with your credentials. If not enrolled, click “Enroll Now” to register for
+         internet banking. Our support team is ready to assist.</p>
+    </article>
+
+    <article class="faq-card">
+      <h3>Are my transactions and personal information secure?</h3>
+      <p>Yes. We use industry-leading encryption, multi-factor authentication, and regularly updated
+         security protocols to protect your data.</p>
+    </article>
+  </div>
+
+  <div class="faq-load">
+    <button class="btn solid" id="loadFaqBtn">Load All FAQs ▼</button>
+  </div>
+</section>
+
+
+<!---------------------------------------------------
+---------------- CSS CODE START --------------------
+---------------------------------------------------->
+<style>
+  :root {
+    --panel:#ffffff; --line:#e2e8f0; --text:#000000;
+    --muted:#4a5568; --accent:#4299e1;
+  }
+  .accent{color:var(--accent)}
+  .h-top{color:var(--text);font-weight:700}
+  .sub{color:var(--muted);margin:0 0 12px}
+
+  /* Hero wrapper */
+  .sec-hero{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    background:linear-gradient(180deg,#ffffff,#f8f9fa);
+    border:1px solid var(--line);
+    border-radius:24px;
+    padding:28px;
+    margin-top:12px;
+    min-height:70vh; /* reduced height */
+    box-shadow:0 16px 48px rgba(0,0,0,.08);
+  }
+
+  /* Hero content (text + image) */
+  .sec-hero__content{
+    display:grid;
+    grid-template-columns:1fr .8fr;
+    gap:28px;
+    align-items:center;
+    flex-grow:1;
+  }
+  .sec-pill{display:inline-flex;align-items:center;gap:8px;background:#f8f9fa;
+    border:1px solid #e2e8f0;color:#4a5568;border-radius:999px;
+    padding:6px 12px;font-size:12px;margin-bottom:10px;cursor:pointer;transition:.3s}
+  .sec-pill:hover{color:var(--accent);text-shadow:0 0 10px var(--accent)}
+
+  .sec-hero__copy h1{margin:0 0 10px;font-size:40px;line-height:1.08;color:var(--text);cursor:pointer;transition:.3s}
+  .sec-hero__copy h1:hover{color:var(--accent);text-shadow:0 0 12px rgba(66,153,225,.5)}
+
+  .sec-hero__copy p{cursor:pointer;transition:.3s}
+  .sec-hero__copy p:hover{color:var(--accent);text-shadow:0 0 8px rgba(66,153,225,.4)}
+
+  .highlight-strips{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+  .highlight-strips .strip{
+    background:#f8f9fa;color:var(--accent);padding:6px 14px;
+    border-radius:8px;font-size:13px;font-weight:600;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    cursor:pointer;transition:.3s ease;
+  }
+  .highlight-strips .strip:hover{
+    transform:translateY(-3px) scale(1.05);
+    background:var(--accent);color:#ffffff;
+    box-shadow:0 8px 20px rgba(66,153,225,.25);
+  }
+
+  /* Hero image */
+  .sec-hero__art img.hero-img{
+    width:90%;border-radius:18px;filter:brightness(0.8);
+    transition:transform .4s ease, filter .4s ease, box-shadow .4s ease;
+    cursor:pointer;
+  }
+  .sec-hero__art img.hero-img:hover{
+    transform:scale(1.05);filter:brightness(1);
+    box-shadow:0 20px 60px rgba(66,153,225,.3);
+  }
+
+  /* Security strip (inside hero bottom) */
+  .security-strip{
+    margin-top:20px;
+    text-align:center;
+  }
+  .security-strip code{
+    display:inline-block;
+    background:#f8f9fa;
+    color:#000000;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    padding:10px 24px;
+    font-family:"Courier New", monospace;
+    font-size:15px;
+    letter-spacing:1px;
+    box-shadow:0 4px 16px rgba(0,0,0,0.1);
+    transition:all .4s ease;
+    cursor:pointer;
+  }
+  .security-strip code:hover{
+    color:var(--accent);
+    text-shadow:0 0 6px var(--accent), 0 0 12px #fff;
+    background:#ffffff;
+    transform:scale(1.05) rotate(-1deg);
+    box-shadow:0 8px 28px rgba(66,153,225,.25);
+  }
+
+  /* Features */
+  .security-wrap{margin-top:100px;}
+  .feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+  .feature-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:20px;box-shadow:0 10px 28px rgba(0,0,0,.18);
+    transition:transform .25s ease,border-color .25s ease;
+  }
+  .feature-card:hover{transform:translateY(-4px);border-color:var(--accent)}
+  .feature-card h3{margin:0 0 8px;color:var(--text);font-size:20px}
+  .feature-card p{color:var(--muted);font-size:14px}
+
+  /* FAQ */
+  .faq-wrap{margin-top:72px;}
+  .faq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+  .faq-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:20px;box-shadow:0 10px 28px rgba(0,0,0,.18);
+    transition:transform .25s ease,border-color .25s ease;
+  }
+  .faq-card:hover{transform:translateY(-4px);border-color:var(--accent)}
+  .faq-card h3{margin:0 0 8px;font-size:16px;color:var(--text)}
+  .faq-card p{font-size:14px;color:var(--muted)}
+  .faq-load{text-align:center;margin-top:20px}
+  .btn.solid{background:var(--accent);color:#ffffff;padding:10px 20px;border:none;
+    border-radius:999px;font-weight:700;cursor:pointer;transition:.2s}
+  .btn.solid:hover{background:#3182ce}
+</style>
+<!---------------------------------------------------
+---------------- CSS CODE END ----------------------
+---------------------------------------------------->
+
+
+<!---------------------------------------------------
+---------------- JS CODE START ---------------------
+---------------------------------------------------->
+<script>
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const btn=document.getElementById('loadFaqBtn');
+    if(btn){
+      btn.addEventListener('click',()=>{
+        alert("✅ All FAQs loaded (demo). Extend here if you want to show more dynamically.");
+      });
+    }
+  });
+</script>
+<!---------------------------------------------------
+---------------- JS CODE END -----------------------
+---------------------------------------------------->
+
+{% endblock %}

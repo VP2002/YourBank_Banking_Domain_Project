@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YourBank — {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body data-auth="{{ '1' if current_user.is_authenticated else '0' }}">
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="container">
+      <div class="nav-holder">
+        <div class="nav-wrap">
+          <a class="brand" href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="YourBank" />
+          </a>
+
+          {# Prevent 'active' state on dashboard to keep navbar identical there #}
+          {% set on_dashboard = request.path.startswith(url_for('dashboard')) %}
+          <nav class="nav-links">
+            <a class="pill {{ 'active' if (not on_dashboard and request.path == url_for('home')) else '' }}"
+               href="{{ url_for('home') }}">Home</a>
+            <a class="pill {{ 'active' if (not on_dashboard and request.path.startswith(url_for('careers'))) else '' }}"
+               href="{{ url_for('careers') }}">Careers</a>
+            {# Use literal /services until route exists to avoid BuildError #}
+            <a class="pill {{ 'active' if (not on_dashboard and request.path.startswith('/services')) else '' }}"
+               href="/services">Services</a>
+            <a class="pill {{ 'active' if (not on_dashboard and request.path.startswith(url_for('security'))) else '' }}"
+               href="{{ url_for('security') }}">Security</a>
+          </nav>
+
+          <div class="nav-cta">
+            {% if current_user.is_authenticated %}
+              {# If EMPLOYEE, show Employee Console; else show Dashboard #}
+              {% if has_role('EMPLOYEE') %}
+                <a class="btn ghost equal" href="{{ url_for('employee') }}">Employee Console</a>
+              {% else %}
+                <a class="btn ghost equal" href="{{ url_for('dashboard') }}">Dashboard</a>
+              {% endif %}
+              <button class="btn ghost equal" id="logoutBtn" type="button">Logout</button>
+              <button class="avatar" id="profileBtn" title="{{ current_user.first_name or 'Profile' }}">
+                {{ (current_user.first_name or 'U')[:1] | upper }}
+              </button>
+            {% else %}
+              <!-- Before login: Sign Up + Login (opens modal) -->
+              <a class="btn ghost" href="#" id="openSignup">Sign Up</a>
+              <a class="btn solid" href="#" id="openLogin">Login</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PAGE CONTENT -->
+  <main class="page container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container foot-top">
+      <div class="foot-logo">
+        <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="YourBank" />
+      </div>
+
+      <div class="foot-menu">
+        <a href="{{ url_for('home') }}">Home</a>
+        <a href="{{ url_for('careers') }}">Careers</a>
+        {# Footer link also uses literal /services for now #}
+        <a href="/services">Services</a>
+        <a href="{{ url_for('security') }}">Security</a>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="contact-row">
+        <div class="contact-item">
+          <span class="icon mail" aria-hidden="true"></span>
+          <span>hello@YourBank.com</span>
+        </div>
+        <div class="contact-item">
+          <span class="icon phone" aria-hidden="true"></span>
+          <span>+91 91813 23 2309</span>
+        </div>
+        <div class="contact-item">
+          <span class="icon pin" aria-hidden="true"></span>
+          <span>Somewhere in the World</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="foot-bottom">
+        <div class="socials">
+          <a href="#" aria-label="Facebook" class="soc fb">f</a>
+          <a href="#" aria-label="Twitter"  class="soc tw">t</a>
+          <a href="#" aria-label="LinkedIn" class="soc in">in</a>
+        </div>
+        <div class="rights">All Rights Reserved @YourBank</div>
+        <div class="legal">
+          <a href="#">Privacy Policy</a>
+          <span class="sep">|</span>
+          <a href="#">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===================== AUTH MODAL ===================== -->
+  {% if not current_user.is_authenticated %}
+  <div id="authModal" class="modal" aria-hidden="true">
+    <div class="modal__overlay" id="authOverlay"></div>
+
+    <!-- LOGIN PANEL -->
+    <div class="auth-card" id="loginPanel" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <button class="modal__close" id="closeModal" aria-label="Close">×</button>
+      <h2 class="auth-title" id="loginTitle">Login</h2>
+      <p class="auth-sub">Welcome back! Please log in to access your account.</p>
+
+      <form id="loginForm" class="auth-form">
+        <div class="auth-row two">
+          <div class="field">
+            <input type="email" name="email" placeholder="Enter your Email" required />
+          </div>
+          <div class="field">
+            <input type="password" name="password" placeholder="Enter your Password" required />
+          </div>
+        </div>
+
+        <div class="auth-actions">
+          <a href="#" class="link-muted">Forgot Password?</a>
+        </div>
+
+        <button type="submit" class="btn solid wide">Login</button>
+        <button type="button" class="btn ghost wide" id="toSignup">Sign Up</button>
+
+        <div class="or-line"><span>Or Continue with</span></div>
+        <div class="social-row">
+          <span class="soc-glow">G</span>
+          <span class="soc-glow">f</span>
+          <span class="soc-glow"></span>
+        </div>
+
+        <div class="form-msg" id="loginMsg"></div>
+      </form>
+    </div>
+
+    <!-- SIGNUP PANEL -->
+    <div class="auth-card hidden" id="signupPanel" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+      <button class="modal__close" id="closeModal2" aria-label="Close">×</button>
+      <h2 class="auth-title" id="signupTitle">Sign Up</h2>
+      <p class="auth-sub">Join our community today! Create an account to unlock exclusive features and personalized experiences.</p>
+
+      <form id="signupForm" class="auth-form">
+        <div class="auth-row two">
+          <div class="field">
+            <input type="text" name="first_name" placeholder="Enter First Name" required />
+          </div>
+          <div class="field">
+            <input type="text" name="last_name" placeholder="Enter Last Name" required />
+          </div>
+        </div>
+
+        <div class="auth-row two">
+          <div class="field">
+            <input type="email" name="email" placeholder="Enter your Email" required />
+          </div>
+          <div class="field">
+            <input type="password" name="password" placeholder="Enter your Password" required />
+          </div>
+        </div>
+
+        <button type="submit" class="btn solid wide">Sign Up</button>
+        <button type="button" class="btn ghost wide" id="toLogin">Login</button>
+
+        <div class="or-line"><span>Or Continue with</span></div>
+        <div class="social-row">
+          <span class="soc-glow">G</span>
+          <span class="soc-glow">f</span>
+          <span class="soc-glow"></span>
+        </div>
+
+        <div class="form-msg" id="signupMsg"></div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+  <!-- =================== END AUTH MODAL =================== -->
+
+  
+  <!---------------------------------------------------
+  ----------------Scripts Code Start --------------------
+  ---------------------------------------------------->
+  <script>
+    // If NOT authenticated: modal logic + API calls
+    if (document.body.dataset.auth === "0") {
+      const modal = document.getElementById('authModal');
+      const overlay = document.getElementById('authOverlay');
+      const openLogin = document.getElementById('openLogin');
+      const openSignup = document.getElementById('openSignup');
+      const close1 = document.getElementById('closeModal');
+      const close2 = document.getElementById('closeModal2');
+      const loginPanel = document.getElementById('loginPanel');
+      const signupPanel = document.getElementById('signupPanel');
+      const toSignup = document.getElementById('toSignup');
+      const toLogin = document.getElementById('toLogin');
+
+      const showModal = (panel='login') => {
+        modal.classList.add('show');
+        if (panel === 'login') { loginPanel.classList.remove('hidden'); signupPanel.classList.add('hidden'); }
+        else { signupPanel.classList.remove('hidden'); loginPanel.classList.add('hidden'); }
+      };
+      const hideModal = () => modal.classList.remove('show');
+
+      openLogin && openLogin.addEventListener('click', (e)=>{ e.preventDefault(); showModal('login'); });
+      openSignup && openSignup.addEventListener('click', (e)=>{ e.preventDefault(); showModal('signup'); });
+      [overlay, close1, close2].forEach(el => el && el.addEventListener('click', hideModal));
+      toSignup && toSignup.addEventListener('click', ()=>showModal('signup'));
+      toLogin && toLogin.addEventListener('click', ()=>showModal('login'));
+
+      async function postJSON(url, data){
+        const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+        const j = await r.json().catch(()=>({ok:false, message:'Unexpected response'}));
+        if(!r.ok) throw new Error(j.message || 'Request failed');
+        return j;
+      }
+
+      // LOGIN
+      const loginForm = document.getElementById('loginForm');
+      const loginMsg  = document.getElementById('loginMsg');
+      loginForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        loginMsg.textContent = '';
+        const fd = new FormData(loginForm);
+        const payload = Object.fromEntries(fd.entries());
+        try{
+          await postJSON('/auth/login', payload);
+          loginMsg.textContent = 'Logged in. Redirecting…';
+          setTimeout(()=>location.reload(), 400);
+        }catch(err){
+          loginMsg.textContent = err.message;
+          loginMsg.classList.add('error');
+        }
+      });
+
+      // SIGNUP
+      const signupForm = document.getElementById('signupForm');
+      const signupMsg  = document.getElementById('signupMsg');
+      signupForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        signupMsg.textContent = '';
+        const fd = new FormData(signupForm);
+        const payload = Object.fromEntries(fd.entries());
+        try{
+          await postJSON('/auth/register', payload);
+          signupMsg.textContent = 'Registration successful. Please log in.';
+          setTimeout(()=>showModal('login'), 500);
+        }catch(err){
+          signupMsg.textContent = err.message;
+          signupMsg.classList.add('error');
+        }
+      });
+    }
+
+    // If authenticated: wire up Logout
+    if (document.body.dataset.auth === "1") {
+      const logoutBtn = document.getElementById('logoutBtn');
+      logoutBtn?.addEventListener('click', async () => {
+        try {
+          const r = await fetch('/auth/logout', { method: 'POST' });
+          if (!r.ok) throw new Error('Logout failed');
+          location.href = '/';
+        } catch (e) { alert(e.message); }
+      });
+    }
+  </script>
+  <!---------------------------------------------------
+  ----------------Scripts Code END --------------------
+  ---------------------------------------------------->
+
+
+  {# Only include homepage JS on the home route to avoid interfering with dashboard modals #}
+  {% if request.path == url_for('home') %}
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  {% endif %}
+</body>
+</html>
